@@ -1,10 +1,13 @@
 use crate::native::{self, Span};
 use anyhow::{Result, ensure};
+use rayon::prelude::*;
+use serde::Deserialize;
 use serde::Serialize;
 use std::{
     cmp::Reverse,
     collections::BinaryHeap,
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 use unicode_normalization::UnicodeNormalization;
 
@@ -16,12 +19,75 @@ pub fn normalize(s: &str) -> String {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn parallel_partitions_keep_global_ids_and_uncapped_top_k() {
+        let mut index = Index::new("/synthetic".into(), 70_000);
+        for id in 0..70_000 {
+            let name = if id == 0 {
+                String::new()
+            } else if id == 69_999 {
+                "target.txt".into()
+            } else {
+                format!("archive_target_{id:05}.txt")
+            };
+            index
+                .put(&Record {
+                    id,
+                    parent: 0,
+                    name: &name,
+                    folded: &name,
+                    full: "",
+                    initials: "",
+                    kind: if id == 0 { 1 } else { 0 },
+                    dev: 0,
+                    ino: id as u64,
+                    size: 0,
+                    mtime: 0,
+                })
+                .unwrap();
+        }
+        let best = index.query(
+            "target",
+            &QueryOptions {
+                limit: 1,
+                ..Default::default()
+            },
+        );
+        assert_eq!(best[0].id, 69_999);
+        assert_eq!(best[0].path, Path::new("/synthetic/target.txt"));
+        let first = index.query(
+            "archive_target",
+            &QueryOptions {
+                limit: 20,
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            first.iter().map(|h| h.id).collect::<Vec<_>>(),
+            (1..=20).collect::<Vec<_>>()
+        );
+    }
+}
+
+#[derive(Default, Clone, Copy, Deserialize, Serialize, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum MatchMode {
+    #[default]
+    Auto,
+    Filename,
+    Pinyin,
+}
+
 #[derive(Default)]
 pub struct QueryOptions {
     pub limit: usize,
     pub kind: Option<u8>,
     pub extension: Option<String>,
     pub under: Option<PathBuf>,
+    pub mode: MatchMode,
 }
 
 #[derive(Debug, Serialize)]
@@ -212,7 +278,7 @@ impl Index {
         let path_query = q.contains('/');
         let mut ids = vec![0u32; self.kinds.len()];
         let mut scores = vec![0i32; self.kinds.len()];
-        let found = if path_query {
+        let ranges = if path_query {
             // Normalize each distinct parent once, rather than allocating a path per file.
             let (prefix, final_component) = q.rsplit_once('/').unwrap();
             let suffix = format!("{prefix}/");
@@ -241,28 +307,54 @@ impl Index {
                     count += 1;
                 }
             }
-            count
+            std::iter::once(0..count).collect::<Vec<_>>()
         } else {
-            // All arrays have slots() elements and stay immutably borrowed until C returns.
-            unsafe {
+            let scan = |start: usize, out: &mut [u32], ranks: &mut [i32]| unsafe {
+                // Read-only index spans and disjoint writable slices stay alive until C returns.
                 native::lumi_search(
                     self.blob.as_ptr(),
                     self.folded.as_ptr(),
                     self.full.as_ptr(),
                     self.initials.as_ptr(),
                     self.kinds.as_ptr(),
-                    self.kinds.len() as u32,
+                    start as u32,
+                    (start + out.len()) as u32,
                     q.as_ptr(),
                     q.len(),
                     i32::from(q.is_ascii() && q.bytes().any(|b| b.is_ascii_alphabetic())),
-                    ids.as_mut_ptr(),
-                    scores.as_mut_ptr(),
+                    match options.mode {
+                        MatchMode::Auto => 0,
+                        MatchMode::Filename => 1,
+                        MatchMode::Pinyin => 2,
+                    },
+                    out.as_mut_ptr(),
+                    ranks.as_mut_ptr(),
                 )
+            };
+            static POOL: OnceLock<Option<rayon::ThreadPool>> = OnceLock::new();
+            if self.slots() >= 65_536
+                && let Some(pool) =
+                    POOL.get_or_init(|| rayon::ThreadPoolBuilder::new().num_threads(4).build().ok())
+            {
+                let chunk = self.slots().div_ceil(4);
+                pool.install(|| {
+                    ids.par_chunks_mut(chunk)
+                        .zip(scores.par_chunks_mut(chunk))
+                        .enumerate()
+                        .map(|(n, (out, ranks))| {
+                            let start = n * chunk;
+                            start..start + scan(start, out, ranks)
+                        })
+                        .collect::<Vec<_>>()
+                })
+            } else {
+                std::iter::once(0..scan(0, &mut ids, &mut scores)).collect::<Vec<_>>()
             }
         };
         let limit = options.limit.min(10_000);
         let mut best = BinaryHeap::with_capacity(limit + 1);
-        for j in 0..found {
+        let mut scope_parents = options.under.as_ref().map(|_| vec![0u8; self.slots()]);
+        for j in ranges.into_iter().flatten() {
             let id = ids[j];
             let i = id as usize;
             if options.kind.is_some_and(|k| self.kinds[i] & 3 != k) {
@@ -276,12 +368,21 @@ impl Index {
             {
                 continue;
             }
-            if options
-                .under
-                .as_ref()
-                .is_some_and(|under| !self.path(id).starts_with(under))
-            {
-                continue;
+            if let (Some(under), Some(parents)) = (&options.under, &mut scope_parents) {
+                let parent = self.parents[i] as usize;
+                if parents[parent] == 0 {
+                    parents[parent] = if self.path(parent as u32).starts_with(under) {
+                        2
+                    } else {
+                        1
+                    };
+                }
+                if parents[parent] != 2
+                    && !(under.file_name() == Some(std::ffi::OsStr::new(self.name(id)))
+                        && self.path(id) == *under)
+                {
+                    continue;
+                }
             }
             let rank = (scores[j], Reverse(id));
             if best.len() < limit {
@@ -301,10 +402,10 @@ impl Index {
                 is_directory: self.kinds[id as usize] & 3 == 1,
                 size: self.sizes[id as usize],
                 mtime: self.mtimes[id as usize],
-                score,
+                score: score / 4,
                 match_kind: if path_query {
                     "path"
-                } else if score < 1000 {
+                } else if score & 3 != 0 {
                     "pinyin"
                 } else {
                     "name"

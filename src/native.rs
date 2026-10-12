@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, bail, ensure};
+use std::collections::HashMap;
 use std::{
     ffi::{CStr, CString, c_char, c_void},
     fs::OpenOptions,
@@ -41,10 +42,12 @@ unsafe extern "C" {
         full: *const Span,
         initials: *const Span,
         kinds: *const u8,
-        count: u32,
+        start: u32,
+        end: u32,
         needle: *const u8,
         len: usize,
         ascii: i32,
+        mode: i32,
         ids: *mut u32,
         scores: *mut i32,
     ) -> usize;
@@ -139,6 +142,7 @@ pub(crate) fn read_dir(
 
 pub(crate) struct Pinyin {
     readings: Vec<String>,
+    phrases: HashMap<&'static str, (&'static str, &'static str)>,
 }
 impl Pinyin {
     pub fn new() -> Result<Self> {
@@ -169,15 +173,39 @@ impl Pinyin {
             })
             .collect();
         ensure!(readings.len() == 0x5200, "unexpected pinyin table length");
-        Ok(Self { readings })
+        let phrases = include_str!("../vendor/pinyin-pro/phrases.tsv")
+            .lines()
+            .map(|line| {
+                let mut fields = line.split('\t');
+                (
+                    fields.next().unwrap(),
+                    (fields.next().unwrap(), fields.next().unwrap()),
+                )
+            })
+            .collect();
+        Ok(Self { readings, phrases })
     }
     pub fn keys(&self, name: &str) -> (String, String) {
         if !name.chars().any(|c| ('\u{4e00}'..='\u{9fff}').contains(&c)) {
             return (String::new(), String::new());
         }
         let (mut full, mut initials) = (String::new(), String::new());
-        for c in name.chars() {
+        let mut i = 0;
+        while i < name.len() {
+            let c = name[i..].chars().next().unwrap();
             if ('\u{4e00}'..='\u{9fff}').contains(&c) {
+                // Dictionary phrases are 2–5 basic CJK characters (three UTF-8 bytes each).
+                let phrase = (2..=5).rev().find_map(|n| {
+                    name.get(i..i + n * 3)
+                        .and_then(|word| self.phrases.get(word))
+                        .map(|keys| (n * 3, keys))
+                });
+                if let Some((bytes, (pinyin, short))) = phrase {
+                    full.push_str(pinyin);
+                    initials.push_str(short);
+                    i += bytes;
+                    continue;
+                }
                 let reading = &self.readings[c as usize - 0x4e00];
                 full.push_str(reading);
                 if let Some(first) = reading.chars().next() {
@@ -187,6 +215,7 @@ impl Pinyin {
                 full.push(c);
                 initials.push(c);
             }
+            i += c.len_utf8();
         }
         (full, initials)
     }

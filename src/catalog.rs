@@ -65,8 +65,8 @@ impl Catalog {
         conn.busy_timeout(Duration::from_secs(5))?;
         let version: i32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
         ensure!(
-            version == 1 || (write && version == 0),
-            "unsupported index version"
+            version == 2 || (write && version == 0),
+            "index format changed; scan into a new database (old database is preserved)"
         );
         if write {
             conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;
@@ -76,11 +76,11 @@ impl Catalog {
                     dev INTEGER NOT NULL,ino INTEGER NOT NULL,size INTEGER NOT NULL,mtime INTEGER NOT NULL,live INTEGER NOT NULL);
                 CREATE INDEX IF NOT EXISTS children ON files(parent);
                 CREATE INDEX IF NOT EXISTS identity ON files(dev,ino);
-                PRAGMA user_version=1;")?;
+                PRAGMA user_version=2;")?;
         }
         ensure!(
-            conn.pragma_query_value(None, "user_version", |r| r.get::<_, i32>(0))? == 1,
-            "unsupported index version"
+            conn.pragma_query_value(None, "user_version", |r| r.get::<_, i32>(0))? == 2,
+            "index format changed; scan into a new database (old database is preserved)"
         );
         Ok(Self { conn })
     }

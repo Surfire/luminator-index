@@ -10,34 +10,45 @@
 
 typedef struct { uint32_t start, len; } lumi_span;
 
-/* Names are already Unicode-normalized/lowercased in Rust. No candidate cap. */
+/* Immutable spans; each worker writes only its own output buffers. Low score
+   bits identify name/full-pinyin/initials independently of ranking. */
 size_t lumi_search(const uint8_t *blob, const lumi_span *names,
                    const lumi_span *full, const lumi_span *initials,
-                   const uint8_t *kinds, uint32_t count,
-                   const uint8_t *needle, size_t len, int ascii,
+                   const uint8_t *kinds, uint32_t start, uint32_t end,
+                   const uint8_t *needle, size_t len, int ascii, int mode,
                    uint32_t *ids, int32_t *scores) {
+    static const int name_rank[5] = {0,2500,4500,6000,9000};
+    static const int full_rank[5] = {0,3000,4200,5500,8000};
+    static const int short_rank[5] = {0,2800,4000,5200,7500};
     size_t found = 0;
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i = start ? start : 1; i < end; i++) {
         if (kinds[i] & 128) continue;
         lumi_span n = names[i];
-        int quality = sift_contains(blob + n.start, n.len, needle, len, 1)
-            ? sift_match_quality(blob + n.start, n.len, needle, len, 1) : 0;
-        int score = quality * 1000;
-        if (!quality && ascii && full[i].len) {
-            n = full[i];
-            quality = sift_contains(blob + n.start, n.len, needle, len, 1)
-                ? sift_match_quality(blob + n.start, n.len, needle, len, 1) : 0;
-            score = quality * 100 + 100;
-            if (!quality) {
-                n = initials[i];
-                quality = sift_contains(blob + n.start, n.len, needle, len, 1)
-                    ? sift_match_quality(blob + n.start, n.len, needle, len, 1) : 0;
-                score = quality * 100;
-            }
+        int score = 0, tag = 0;
+        if (mode != 2 && sift_contains(blob+n.start,n.len,needle,len,1)) {
+            int quality=sift_match_quality(blob+n.start,n.len,needle,len,1);
+            score=name_rank[quality];
+            const uint8_t *dot=NULL;
+            for (size_t k=n.len;k>0;k--) if(blob[n.start+k-1]=='.'){dot=blob+n.start+k-1;break;}
+            if (dot && needle[0]!='.' && !sift_contains(blob+n.start,(size_t)(dot-blob-n.start),needle,len,1)) score=1500;
         }
-        if (quality) {
-            ids[found] = i;
-            scores[found++] = score + ((kinds[i] & 3) == 1 ? 10 : 0);
+        if (ascii && mode != 1 && full[i].len && score < 9000) {
+            n=full[i];
+            int quality=sift_contains(blob+n.start,n.len,needle,len,1)
+                ? sift_match_quality(blob+n.start,n.len,needle,len,1) : 0;
+            int rank=full_rank[quality];
+            if(rank>score){score=rank;tag=1;}
+            n=initials[i];
+            quality=sift_contains(blob+n.start,n.len,needle,len,1)
+                ? sift_match_quality(blob+n.start,n.len,needle,len,1) : 0;
+            rank=short_rank[quality];
+            if(quality && len>=2 && len<=4) rank+=mode==2 ? 3000 : 700;
+            if(rank>score){score=rank;tag=2;}
+        }
+        if(score) {
+            size_t penalty=names[i].len<100?names[i].len:100;
+            ids[found]=i;
+            scores[found++]=(score-(int)penalty+((kinds[i]&3)==1?10:0))*4+tag;
         }
     }
     return found;
@@ -79,7 +90,7 @@ void *lumi_watch_start(const char *root, uint64_t since, lumi_event_callback cb,
     if (!path) { free(w); return NULL; }
     CFArrayRef paths = CFArrayCreate(NULL, (const void **)&path, 1, &kCFTypeArrayCallBacks);
     FSEventStreamContext ctx = {0, w, NULL, NULL, NULL};
-    w->stream = FSEventStreamCreate(NULL, events, &ctx, paths, since, 0.10,
+    w->stream = FSEventStreamCreate(NULL, events, &ctx, paths, since, 0.02,
         kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagWatchRoot);
     CFRelease(paths); CFRelease(path);
     if (!w->stream) { free(w); return NULL; }

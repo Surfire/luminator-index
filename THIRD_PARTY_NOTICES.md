@@ -12,6 +12,12 @@ The CoreFoundation pinyin table approach in `src/native.rs` follows
 `Sources/OilFindCore/Pinyin.swift` at the same commit. The implementation uses
 Apple's system transliterator; single-character readings do not resolve contextual polyphones.
 
+`vendor/pinyin-pro/phrases.tsv` is derived from all phrase entries in pinyin-pro
+`dict2.ts`–`dict5.ts`, commit `0785234b4dc0fa3ea9f244e3d77703b2df6a9db4`.
+Copyright (c) 2022-present zh-lx, MIT. The original license and transformation
+details are in `vendor/pinyin-pro/`. The phrase table overrides single-character
+defaults; it does not use private corpus filenames or model inference.
+
 Rust dependency versions are pinned in `Cargo.lock`; their licenses remain
 their own. SQLite is linked from macOS; CoreFoundation, CoreServices and
 Accelerate are Apple system APIs (Accelerate is not used in phase 1).

@@ -1,5 +1,5 @@
 use crate::{
-    Catalog, Index, QueryOptions, WriterLock, footprint, footprint_peak,
+    Catalog, Index, MatchMode, QueryOptions, WriterLock, footprint, footprint_peak,
     native::{Pinyin, Watcher},
 };
 use anyhow::{Context, Result, ensure};
@@ -10,11 +10,11 @@ use std::{
     io::{BufRead, BufReader, Read, Write},
     os::unix::{
         fs::PermissionsExt,
+        io::AsRawFd,
         net::{UnixListener, UnixStream},
     },
     path::{Path, PathBuf},
     sync::atomic::{AtomicBool, Ordering},
-    thread,
     time::{Duration, Instant},
 };
 
@@ -25,6 +25,8 @@ pub struct Request {
     pub kind: Option<u8>,
     pub extension: Option<String>,
     pub under: Option<PathBuf>,
+    #[serde(default)]
+    pub mode: MatchMode,
 }
 
 pub fn answer(index: &Index, request: Request) -> Value {
@@ -37,6 +39,7 @@ pub fn answer(index: &Index, request: Request) -> Value {
                 kind: request.kind,
                 extension: request.extension,
                 under: request.under,
+                mode: request.mode,
             },
         );
         json!({"results":results,"elapsed_ms":start.elapsed().as_secs_f64()*1000.})
@@ -151,7 +154,15 @@ pub fn serve(db: &Path, socket: &Path) -> Result<()> {
                 }
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                thread::sleep(Duration::from_millis(5))
+                // Wake immediately for a query instead of imposing a 5 ms sleep.
+                let mut fd = libc::pollfd {
+                    fd: listener.as_raw_fd(),
+                    events: libc::POLLIN,
+                    revents: 0,
+                };
+                unsafe {
+                    libc::poll(&mut fd, 1, 5);
+                }
             }
             Err(e) => return Err(e.into()),
         }

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use luminator_index::{
-    Catalog, WriterLock, benchmark,
+    Catalog, MatchMode, WriterLock, benchmark,
     server::{self, Request},
 };
 use std::{fs, path::PathBuf, time::Instant};
@@ -40,6 +40,8 @@ enum Command {
         under: Option<PathBuf>,
         #[arg(long)]
         socket: Option<PathBuf>,
+        #[arg(long, value_enum, default_value = "auto")]
+        mode: MatchMode,
     },
     /// Watch FSEvents and answer local JSON queries; stays in the foreground.
     Serve {
@@ -109,6 +111,7 @@ fn main() -> Result<()> {
             extension,
             under,
             socket,
+            mode,
         } => {
             ensure!(limit <= 10_000, "limit must be at most 10000");
             let request = Request {
@@ -121,6 +124,7 @@ fn main() -> Result<()> {
                 }),
                 extension,
                 under: under.map(absolute).transpose()?,
+                mode,
             };
             if let Some(socket) = socket {
                 server::request(&socket, &request)?

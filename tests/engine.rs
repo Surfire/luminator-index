@@ -1,5 +1,5 @@
 use luminator_index::{
-    Catalog, QueryOptions, WriterLock,
+    Catalog, MatchMode, QueryOptions, WriterLock,
     server::{self, Request},
 };
 use std::{
@@ -17,6 +17,83 @@ fn options(limit: usize) -> QueryOptions {
         limit,
         ..Default::default()
     }
+}
+
+#[test]
+fn contextual_pinyin_and_short_query_ranking_preserve_literal_names() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("files");
+    fs::create_dir(&root).unwrap();
+    for name in [
+        "成都三院.pdf",
+        "银行缴费.pdf",
+        "重复检查.docx",
+        "重庆研究.md",
+        "行业报告.txt",
+        "项目方案.pdf",
+        "xm.txt",
+        "alpha.txt",
+    ] {
+        fs::write(root.join(name), []).unwrap();
+    }
+    for n in 0..60 {
+        fs::write(root.join(format!("asset_{n:03}.xml")), []).unwrap();
+    }
+    let db = Catalog::open(&temp.path().join("names.sqlite"), true).unwrap();
+    let (index, _) = db.scan(&root).unwrap();
+    for (q, name) in [
+        ("chengdu", "成都三院.pdf"),
+        ("cdsy", "成都三院.pdf"),
+        ("yinhang", "银行缴费.pdf"),
+        ("yhjf", "银行缴费.pdf"),
+        ("chongfu", "重复检查.docx"),
+        ("cfjc", "重复检查.docx"),
+        ("chongqing", "重庆研究.md"),
+        ("hangye", "行业报告.txt"),
+    ] {
+        assert!(
+            index
+                .query(q, &options(20))
+                .iter()
+                .any(|h| h.path.file_name().unwrap() == name),
+            "{q}"
+        );
+    }
+    let hits = index.query("xm", &options(20));
+    assert_eq!(hits[0].path.file_name().unwrap(), "xm.txt");
+    assert!(
+        hits.iter()
+            .any(|h| h.path.file_name().unwrap() == "项目方案.pdf")
+    );
+    assert_eq!(index.query("alpha", &options(1))[0].match_kind, "name");
+    let hits = index.query(
+        "xm",
+        &QueryOptions {
+            mode: MatchMode::Filename,
+            ..options(100)
+        },
+    );
+    assert!(
+        !hits
+            .iter()
+            .any(|h| h.path.file_name().unwrap() == "项目方案.pdf")
+    );
+    let hits = index.query(
+        "xm",
+        &QueryOptions {
+            mode: MatchMode::Pinyin,
+            ..options(20)
+        },
+    );
+    assert_eq!(hits[0].path.file_name().unwrap(), "项目方案.pdf");
+    assert!(hits.iter().all(|h| h.match_kind == "pinyin"));
+    assert!(
+        db.load()
+            .unwrap()
+            .query("chengdu", &options(20))
+            .iter()
+            .any(|h| h.path.file_name().unwrap() == "成都三院.pdf")
+    );
 }
 
 #[test]
@@ -67,6 +144,7 @@ fn chinese_pinyin_unicode_filters_and_uncapped_ranking() {
             kind: Some(0),
             extension: Some("PDF".into()),
             under: None,
+            ..Default::default()
         },
     );
     assert_eq!(hits.len(), 1);
@@ -75,6 +153,30 @@ fn chinese_pinyin_unicode_filters_and_uncapped_ranking() {
     assert!(index.query("myjk", &options(0)).is_empty());
     let loaded = db.load().unwrap();
     assert_eq!(loaded.query("myjk", &options(20)).len(), 2);
+    let under_file = root.canonicalize().unwrap().join("沐元健康.pdf");
+    assert_eq!(
+        loaded.query(
+            "myjk",
+            &QueryOptions {
+                under: Some(under_file.clone()),
+                ..options(100)
+            }
+        )[0]
+        .path,
+        under_file
+    );
+    assert_eq!(
+        loaded
+            .query(
+                "myjk",
+                &QueryOptions {
+                    under: Some(root.canonicalize().unwrap()),
+                    ..options(100)
+                }
+            )
+            .len(),
+        2
+    );
     assert_eq!(loaded.query("files/医院", &options(20)).len(), 1);
     for q in [
         "files/",
