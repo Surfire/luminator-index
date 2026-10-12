@@ -289,7 +289,14 @@ impl Catalog {
                     }
                 }
                 Err(e) => {
-                    if !path.exists() {
+                    // Only enumeration I/O failures are recoverable. A failed database
+                    // write or a name-pool limit must abort the transaction.
+                    if e.downcast_ref::<std::io::Error>().is_none() {
+                        return Err(e);
+                    }
+                    if fs::symlink_metadata(&path)
+                        .is_err_and(|e| e.kind() == std::io::ErrorKind::NotFound)
+                    {
                         stats.removed += self.remove_tree(index, parent)?;
                     } else {
                         stats.skipped += 1;
