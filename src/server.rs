@@ -44,7 +44,7 @@ pub fn answer(index: &Index, request: Request) -> Value {
         json!({"entries":index.entries(),"slots":index.slots(),"index_allocated_bytes":index.allocated_bytes(),
             "name_pool_bytes":index.name_bytes(),"physical_footprint_bytes":footprint(),
             "physical_footprint_peak_bytes":footprint_peak(),
-            "cloud_directories":index.kinds.iter().filter(|k|**k&132==4).count()})
+            "cloud_directories":index.kinds.iter().filter(|k|**k&135==5).count()})
     }
 }
 

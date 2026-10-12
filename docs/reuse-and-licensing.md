@@ -1,6 +1,6 @@
 # 源码复用与许可证边界
 
-核对日期：2026-10-12。三个本地 checkout 干净，核对时 origin HEAD 与以下提交一致。本表是实现计划；本仓库当前未复制第三方实现代码。
+源码核对日期：2026-10-12，固定版本如下。阶段 1 已原样引入 Oil Find 的 `coilfind.c` / `coilfind.h` / MIT LICENSE，并借鉴拼音表方式；其余条目仍为完整 v0.1 的复用计划。实际引入清单见 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md)。尚未复制 DigUp 或 Tinycast 实现代码。
 
 ## 1. 固定源码版本
 
@@ -53,7 +53,7 @@ SQLite/llama.cpp/Accelerate 本身不用 Rust 重写。Tinycast/Raycast 的界�
 
 Luminator 原创核心、CLI、客户端接口和自行编写的 Raycast 扩展采用 MIT。MIT 允许商业使用和出售副本；采用 MIT 的同时也允许别人 fork 和商用，商业收入不能依赖源码排他性。
 
-引入 Oil Find / DigUp 代码时保留原版权和完整 MIT 文本，新增第三方来源说明，记录复制/修改的文件与固定提交。当前只有设计，没有提前标记“已 vendor”。llama.cpp 及实际构建依赖的 notices 跟随发布产物；EmbeddingGemma 2 模型卡标注 [Apache-2.0](https://huggingface.co/google/embeddinggemma-2)，模型与 GGUF 权重另行分发，不塞入 MIT 源码仓库。
+引入 Oil Find / DigUp 代码时保留原版权和完整 MIT 文本，新增第三方来源说明，记录复制/修改的文件与固定提交。阶段 1 已 vendor 的只有上述 Oil Find C 源码。llama.cpp 及实际构建依赖的 notices 将跟随未来发布产物；EmbeddingGemma 2 模型卡标注 [Apache-2.0](https://huggingface.co/google/embeddinggemma-2)，模型与 GGUF 权重另行分发，不塞入 MIT 源码仓库。
 
 Tinycast 当前是 AGPL-3.0-or-later。其源文件和修改版继续在 Tinycast fork 中保留该许可证，不能复制后换成 MIT。MIT 引擎用公开的本地进程接口独立提供服务；这是工程分离方案，不将“独立进程”视作可以自动免除一切组合分发义务的法律结论。Raycast 是外部宿主，本项目仅使用其公开扩展 API，不复制其闭源应用代码。
 
@@ -63,4 +63,4 @@ Tinycast 当前是 AGPL-3.0-or-later。其源文件和修改版继续在 Tinycas
 2. Tinycast fork：只有开始集成且需要推送时才建立，AGPL，尽量把通用 backend 接口贡献上游；当前不建立第二个仓库。
 3. 不 fork Oil Find / DigUp 整个产品；只按需要引入有来源的组件，保持上游版本可追溯。
 
-2026-10-12 经用户确认，已建立个人公开仓库 `Surfire/luminator-index`，先发布方案文档，接受对接口、中文需求和性能口径的反馈。README 保留“设计阶段”状态，不以尚未测量的性能作宣传。本次没有发布实现代码、模型权重或用户资料。
+2026-10-12 经用户确认，已建立个人公开仓库 `Surfire/luminator-index`，首次发布方案文档。随后获授权实现阶段 1，README 已更新为实际能力；模型权重和用户资料均未引入。本地实现提交及验收证据见阶段 1 报告，后续远端发布应核对 GitHub 当前状态。

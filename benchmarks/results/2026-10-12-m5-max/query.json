@@ -1,0 +1,477 @@
+{
+  "database_bytes": 123183104,
+  "entries": 1000000,
+  "high_fanout": {
+    "max_ms": 19.008917,
+    "p50_ms": 8.899875,
+    "p95_ms": 18.060541,
+    "samples": 100
+  },
+  "index_allocated_bytes": 97000097,
+  "measurements": [
+    {
+      "category": "normal",
+      "max_ms": 14.275708999999999,
+      "p50_ms": 12.712166999999999,
+      "p95_ms": 13.424334,
+      "query": "report",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 13.65825,
+      "p50_ms": 13.163958,
+      "p95_ms": 13.578750000000001,
+      "query": "invoice",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.26325,
+      "p50_ms": 11.63925,
+      "p95_ms": 12.262749999999999,
+      "query": "snapshot",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 13.951666,
+      "p50_ms": 13.641667,
+      "p95_ms": 13.889166999999999,
+      "query": "archive",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.107833,
+      "p50_ms": 11.898584,
+      "p95_ms": 12.018417,
+      "query": "report_000",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.750333000000001,
+      "p50_ms": 12.343292,
+      "p95_ms": 12.619542,
+      "query": "invoice_001",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.830042,
+      "p50_ms": 10.583042,
+      "p95_ms": 10.82625,
+      "query": "snapshot_002",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.745792,
+      "p50_ms": 12.525542000000002,
+      "p95_ms": 12.674792,
+      "query": "archive_003",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.1955,
+      "p50_ms": 12.000458,
+      "p95_ms": 12.189917,
+      "query": "report_004",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.631625,
+      "p50_ms": 12.358834000000002,
+      "p95_ms": 12.613332999999999,
+      "query": "invoice_005",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.859416,
+      "p50_ms": 10.69275,
+      "p95_ms": 10.858708,
+      "query": "snapshot_006",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.767916000000001,
+      "p50_ms": 12.426,
+      "p95_ms": 12.744167000000001,
+      "query": "archive_007",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.423834,
+      "p50_ms": 12.213999999999999,
+      "p95_ms": 12.407833,
+      "query": "0000123",
+      "results": 1
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.338042,
+      "p50_ms": 12.162417,
+      "p95_ms": 12.328708,
+      "query": "0123456",
+      "results": 1
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.604584000000001,
+      "p50_ms": 12.215542,
+      "p95_ms": 12.485042,
+      "query": "0987654",
+      "results": 1
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.266708,
+      "p50_ms": 11.766041,
+      "p95_ms": 12.045584,
+      "query": "0009999",
+      "results": 1
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.708791,
+      "p50_ms": 12.194040999999999,
+      "p95_ms": 12.675792,
+      "query": "0500001",
+      "results": 1
+    },
+    {
+      "category": "normal",
+      "max_ms": 14.848082999999999,
+      "p50_ms": 14.479042,
+      "p95_ms": 14.768,
+      "query": ".pdf",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 19.067,
+      "p50_ms": 12.859667,
+      "p95_ms": 13.347833,
+      "query": ".txt",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 13.632167,
+      "p50_ms": 13.066125,
+      "p95_ms": 13.498792,
+      "query": ".docx",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 15.644041000000001,
+      "p50_ms": 15.438125000000001,
+      "p95_ms": 15.612124999999999,
+      "query": ".json",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 14.784458,
+      "p50_ms": 14.570082999999999,
+      "p95_ms": 14.756375,
+      "query": ".zip",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.151625,
+      "p50_ms": 9.956959,
+      "p95_ms": 10.090333999999999,
+      "query": "健康",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.551834,
+      "p50_ms": 9.94775,
+      "p95_ms": 12.462625,
+      "query": "合作",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.970291,
+      "p50_ms": 9.291291,
+      "p95_ms": 10.956667,
+      "query": "方案",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.219917,
+      "p50_ms": 8.395833999999999,
+      "p95_ms": 9.997583,
+      "query": "清泉",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.989749999999999,
+      "p50_ms": 9.382083,
+      "p95_ms": 10.900458,
+      "query": "资料",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 8.548833,
+      "p50_ms": 7.399042,
+      "p95_ms": 8.001667000000001,
+      "query": "健康合作",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 8.436375,
+      "p50_ms": 8.271374999999999,
+      "p95_ms": 8.389125,
+      "query": "合作方案",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 9.535625000000001,
+      "p50_ms": 8.611041,
+      "p95_ms": 9.404625,
+      "query": "清泉资料",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.649042,
+      "p50_ms": 12.336084000000001,
+      "p95_ms": 12.498709,
+      "query": "jiankang",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 14.298542,
+      "p50_ms": 13.824333,
+      "p95_ms": 14.261666,
+      "query": "hezuo",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 13.830874999999999,
+      "p50_ms": 12.248208,
+      "p95_ms": 12.768833,
+      "query": "fangan",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 13.068708,
+      "p50_ms": 11.466459,
+      "p95_ms": 12.872667000000002,
+      "query": "qingquan",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.771125,
+      "p50_ms": 12.461708999999999,
+      "p95_ms": 12.642000000000001,
+      "query": "ziliao",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 13.986334,
+      "p50_ms": 11.942958,
+      "p95_ms": 13.729708,
+      "query": "jkhzfa",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.416,
+      "p50_ms": 9.538583,
+      "p95_ms": 10.007,
+      "query": "qqzl",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 9.714416,
+      "p50_ms": 8.859167,
+      "p95_ms": 9.706833,
+      "query": "jiankanghezuo",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 9.147541,
+      "p50_ms": 8.152750000000001,
+      "p95_ms": 9.099209,
+      "query": "qingquanziliao",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 11.944625,
+      "p50_ms": 11.632875,
+      "p95_ms": 11.856916,
+      "query": "CAFÉ",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.050500000000001,
+      "p50_ms": 11.562875,
+      "p95_ms": 11.761541000000001,
+      "query": "café",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 16.364791999999998,
+      "p50_ms": 14.391582999999999,
+      "p95_ms": 15.326583,
+      "query": "notes",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 11.970333,
+      "p50_ms": 10.239125,
+      "p95_ms": 11.518459,
+      "query": "group_00010",
+      "results": 1
+    },
+    {
+      "category": "normal",
+      "max_ms": 12.107375,
+      "p50_ms": 10.383792,
+      "p95_ms": 11.347084,
+      "query": "group_00999",
+      "results": 1
+    },
+    {
+      "category": "normal",
+      "max_ms": 13.073084,
+      "p50_ms": 12.836625000000002,
+      "p95_ms": 12.990375,
+      "query": "REPORT",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 13.161000000000001,
+      "p50_ms": 12.492667,
+      "p95_ms": 13.113958,
+      "query": "INVOICE_009",
+      "results": 20
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.205832999999998,
+      "p50_ms": 9.896416,
+      "p95_ms": 10.149583,
+      "query": "not-present-xyz",
+      "results": 0
+    },
+    {
+      "category": "normal",
+      "max_ms": 6.872083,
+      "p50_ms": 6.7187920000000005,
+      "p95_ms": 6.832541,
+      "query": "不存在的文件",
+      "results": 0
+    },
+    {
+      "category": "normal",
+      "max_ms": 10.250333000000001,
+      "p50_ms": 9.8105,
+      "p95_ms": 9.962375000000002,
+      "query": "abcdef123456789",
+      "results": 0
+    },
+    {
+      "category": "normal",
+      "max_ms": 9.53425,
+      "p50_ms": 9.227625,
+      "p95_ms": 9.477041999999999,
+      "query": "9876543210",
+      "results": 0
+    },
+    {
+      "category": "high_fanout",
+      "max_ms": 19.008917,
+      "p50_ms": 17.948041,
+      "p95_ms": 18.246042,
+      "query": "a",
+      "results": 20
+    },
+    {
+      "category": "high_fanout",
+      "max_ms": 14.603167000000001,
+      "p50_ms": 14.196958,
+      "p95_ms": 14.580375,
+      "query": "r",
+      "results": 20
+    },
+    {
+      "category": "high_fanout",
+      "max_ms": 6.686375,
+      "p50_ms": 6.516083,
+      "p95_ms": 6.652375,
+      "query": "健",
+      "results": 20
+    },
+    {
+      "category": "high_fanout",
+      "max_ms": 10.045125,
+      "p50_ms": 7.946584,
+      "p95_ms": 9.463916,
+      "query": "资",
+      "results": 20
+    },
+    {
+      "category": "high_fanout",
+      "max_ms": 9.816583999999999,
+      "p50_ms": 8.792583,
+      "p95_ms": 9.569584,
+      "query": "q",
+      "results": 20
+    },
+    {
+      "category": "path",
+      "max_ms": 1.052875,
+      "p50_ms": 0.939125,
+      "p95_ms": 0.9765419999999999,
+      "query": "group_00023/",
+      "results": 20
+    }
+  ],
+  "name_pool_bytes": 31482000,
+  "normal": {
+    "max_ms": 19.067,
+    "p50_ms": 11.944625,
+    "p95_ms": 14.526125,
+    "samples": 1000
+  },
+  "path": {
+    "max_ms": 1.052875,
+    "p50_ms": 0.939125,
+    "p95_ms": 0.9765419999999999,
+    "samples": 20
+  },
+  "physical_footprint_peak_bytes": 108282408,
+  "restore_ms": 235.49437500000002,
+  "slots": 1000001
+}

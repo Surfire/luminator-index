@@ -1,0 +1,15 @@
+{
+  "entries": 1000000,
+  "index_allocated_bytes": 101711872,
+  "physical_footprint_bytes": 83133088,
+  "physical_footprint_peak_bytes": 170525344,
+  "update": {
+    "added": 1000000,
+    "changed": 0,
+    "cloud_directories": 0,
+    "directories": 1001,
+    "elapsed_ms": 3170.355083,
+    "removed": 0,
+    "skipped": 0
+  }
+}
