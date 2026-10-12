@@ -1,0 +1,14 @@
+.DS_Store
+/target/
+/.build/
+/build/
+/dist/
+/.cache/
+/models/
+/indexes/
+/private-corpus/
+/benchmarks/local-results/
+.env
+.env.local
+*.gguf
+*.safetensors
