@@ -32,4 +32,4 @@ Luminator 计划以 Rust 管理本地索引和查询，结合原生 macOS 能力
 
 本仓库原创内容采用 [MIT](LICENSE)。未来引入的第三方代码保留原作者版权和许可证；Tinycast 的修改放在其单独的 AGPL 仓库中。模型权重与本机索引不提交到本仓库。
 
-建议在方案审阅后建立个人公开仓库 `Surfire/luminator-index`。本地初始化不代表已经在 GitHub 发布。
+公开仓库：[Surfire/luminator-index](https://github.com/Surfire/luminator-index)。当前公开内容为设计文档；实现与性能结果尚未发布。
