@@ -29,13 +29,15 @@ target/release/luminator status --socket /tmp/luminator.sock
 
 输出为 JSON。每个数据库对应一个根目录；多个目录目前分别建库。直接查询数据库读取保存的快照；运行 `serve` 才持续更新，也可以再次运行 `scan` 刷新。每份数据库同一时间只允许一个 scan/serve 写入者。socket 路径也应位于被索引目录之外。
 
-查询使用不区分大小写的 NFC 规范化子串；包含 `/` 时查完整路径，返回原始文件路径。支持 `--kind file|directory|symlink`、`--extension pdf`、`--under /absolute/path` 和 `--limit 20`。拼音针对名称中的常用汉字，使用系统单字读音，不处理多音字语境或拼音声调。未实现 AND/OR/正则查询语法。
+查询使用不区分大小写的 NFC 规范化子串；包含 `/` 时查完整路径，返回原始文件路径。支持 `--kind file|directory|symlink`、`--extension pdf`、`--under /absolute/path` 和 `--limit 20`。拼音使用通用 MIT 词组表解决常见多音字，未收录的词回退到系统单字读音；不处理声调。默认 `--mode auto` 融合名称与拼音，优先精确名称，降低仅扩展名命中的排名；`--mode pinyin` 强调中文全拼/首字母，`--mode filename` 只查字面名称。两字母缩写存在同音/同首字母歧义，建议使用更长缩写、全拼或目录筛选。未实现 AND/OR/正则查询语法。
 
-索引只读名称元数据，不读文件正文，不跟随符号链接；遇到不可枚举的云占位目录会保留目录名称并统计缺口，不向下遍历。尚未验证真实 OneDrive 覆盖，也没有 Spotlight 补充索引。请从一个明确选定的小目录开始体验。
+2026-10-13 的优化将索引格式更新为 **v2**。旧格式库会被明确拒绝并保持原样；请用另一个数据库路径重新 `scan`，无需读取正文。百万索引的名称匹配最多使用 4 个工作线程，小索引继续单线程；后台 socket 等待可立即被查询唤醒。
+
+索引只读名称元数据，不读文件正文，不跟随符号链接；遇到不可枚举的云占位目录会保留目录名称并统计缺口，不向下遍历。已在一个获授权的真实 OneDrive 目录验证可枚举名称、拼音和增量；这不保证云端所有目录均能枚举。没有 Spotlight 补充索引。请从一个明确选定的小目录开始体验。
 
 ## 阶段 1 验证
 
-实测使用 **100 万个实际磁盘文件/目录**，包含约 20% 中文、5% NFD 拉丁文件名。Apple M5 Max / 128 GB 的查询、建库、恢复、增量和资源数据见 [阶段 1 报告](docs/phase1-results.md)，原始统计保存在 `benchmarks/results/`。这些是本机合成数据结果，不代表所有 Mac、云目录或未来 UI 的表现。
+实测使用 **100 万个实际磁盘文件/目录**，包含约 20% 中文、5% NFD 拉丁文件名。Apple M5 Max / 128 GB 上，2026-10-13 复测普通查询 p95 **4.24 ms**，百万索引 socket 往返 p95 **3.39 ms**，单文件增量 p95 **20–34 ms**，服务物理内存峰值约 **110 MiB**。口径、并发负载下的结果和边界见 [优化报告](docs/filename-optimization.md)，原始统计保存在 `benchmarks/results/`。这些是本机合成数据结果，不代表所有 Mac、云目录或未来 UI 的表现；[阶段 1 报告](docs/phase1-results.md) 保留优化前记录。
 
 ```sh
 cargo test --locked
@@ -64,6 +66,7 @@ uv run --no-project python3 benchmarks/live.py --db benchmarks/local-results/mil
 | 文档 | 内容 |
 | --- | --- |
 | [阶段 1 实测](docs/phase1-results.md) | 已实现能力、百万条目性能、复现命令及未验收范围 |
+| [名称优化与 Spotlight 对照](docs/filename-optimization.md) | 多音字、排序、百万条目复测与同范围文件名对照；私人原始数据只保存在本机 |
 | [技术方案与第一版范围](docs/technical-plan.md) | 完整 v0.1 目标、Tinycast 修改清单、Raycast 兼容和后续实施顺序 |
 | [源码复用与许可证](docs/reuse-and-licensing.md) | 固定上游版本、直接复用、Rust 重写、必须调整的代码 |
 | [性能与效果验收](docs/performance-acceptance.md) | 数据集、时间口径、目标、正确性和质量验收 |
@@ -76,6 +79,6 @@ uv run --no-project python3 benchmarks/live.py --db benchmarks/local-results/mil
 
 ## 开源方式
 
-本仓库原创内容采用 [MIT](LICENSE)。已复用的 Oil Find C 扫描/匹配源码保持原样及原 MIT 版权，见 [第三方说明](THIRD_PARTY_NOTICES.md)。Tinycast 的未来修改放在其单独的 AGPL 仓库中。模型权重与本机索引不提交到本仓库。
+本仓库原创内容采用 [MIT](LICENSE)。已复用的 Oil Find C 扫描/匹配源码保持原样及原 MIT 版权；通用拼音词组数据派生自 MIT 的 pinyin-pro，见 [第三方说明](THIRD_PARTY_NOTICES.md)。Tinycast 的未来修改放在其单独的 AGPL 仓库中。模型权重与本机索引不提交到本仓库。
 
 公开仓库：[Surfire/luminator-index](https://github.com/Surfire/luminator-index)。

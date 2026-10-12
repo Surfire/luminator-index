@@ -1,0 +1,126 @@
+{
+  "p95_ms": 9.661083000000001,
+  "samples": 400,
+  "queries": [
+    {
+      "directory_number": 0,
+      "query": ".pdf",
+      "p95_ms": 12.458957999999999,
+      "samples": 20
+    },
+    {
+      "directory_number": 0,
+      "query": "报告",
+      "p95_ms": 2.892875,
+      "samples": 20
+    },
+    {
+      "directory_number": 0,
+      "query": "方案",
+      "p95_ms": 4.022833,
+      "samples": 20
+    },
+    {
+      "directory_number": 0,
+      "query": "a",
+      "p95_ms": 9.660041,
+      "samples": 20
+    },
+    {
+      "directory_number": 0,
+      "query": "qingquan",
+      "p95_ms": 4.306292,
+      "samples": 20
+    },
+    {
+      "directory_number": 23,
+      "query": ".pdf",
+      "p95_ms": 7.739709,
+      "samples": 20
+    },
+    {
+      "directory_number": 23,
+      "query": "报告",
+      "p95_ms": 2.6215,
+      "samples": 20
+    },
+    {
+      "directory_number": 23,
+      "query": "方案",
+      "p95_ms": 4.128833,
+      "samples": 20
+    },
+    {
+      "directory_number": 23,
+      "query": "a",
+      "p95_ms": 9.85675,
+      "samples": 20
+    },
+    {
+      "directory_number": 23,
+      "query": "qingquan",
+      "p95_ms": 4.375083,
+      "samples": 20
+    },
+    {
+      "directory_number": 500,
+      "query": ".pdf",
+      "p95_ms": 7.883166,
+      "samples": 20
+    },
+    {
+      "directory_number": 500,
+      "query": "报告",
+      "p95_ms": 2.6255409999999997,
+      "samples": 20
+    },
+    {
+      "directory_number": 500,
+      "query": "方案",
+      "p95_ms": 3.962333,
+      "samples": 20
+    },
+    {
+      "directory_number": 500,
+      "query": "a",
+      "p95_ms": 9.77525,
+      "samples": 20
+    },
+    {
+      "directory_number": 500,
+      "query": "qingquan",
+      "p95_ms": 4.344375,
+      "samples": 20
+    },
+    {
+      "directory_number": 999,
+      "query": ".pdf",
+      "p95_ms": 7.456083,
+      "samples": 20
+    },
+    {
+      "directory_number": 999,
+      "query": "报告",
+      "p95_ms": 2.783959,
+      "samples": 20
+    },
+    {
+      "directory_number": 999,
+      "query": "方案",
+      "p95_ms": 3.9739170000000006,
+      "samples": 20
+    },
+    {
+      "directory_number": 999,
+      "query": "a",
+      "p95_ms": 9.782083,
+      "samples": 20
+    },
+    {
+      "directory_number": 999,
+      "query": "qingquan",
+      "p95_ms": 4.301,
+      "samples": 20
+    }
+  ]
+}

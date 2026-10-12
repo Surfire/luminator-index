@@ -2,6 +2,8 @@
 
 源码核对日期：2026-10-12，固定版本如下。阶段 1 已原样引入 Oil Find 的 `coilfind.c` / `coilfind.h` / MIT LICENSE，并借鉴拼音表方式；其余条目仍为完整 v0.1 的复用计划。实际引入清单见 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md)。尚未复制 DigUp 或 Tinycast 实现代码。
 
+2026-10-13 补充：已从 MIT 的 [pinyin-pro](https://github.com/zh-lx/pinyin-pro/tree/0785234b4dc0fa3ea9f244e3d77703b2df6a9db4) 固定提交派生全部 2,552 条通用词组读音，原许可证、转换过程及限制保存在 `vendor/pinyin-pro/`。这部分为实际复用数据，Rust 实现最长词组匹配；未引入其 JavaScript 运行时，也未根据私人文件名定制词表。
+
 ## 1. 固定源码版本
 
 | 项目 | 提交 | 许可证 |
