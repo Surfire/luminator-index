@@ -26,7 +26,7 @@ extern "C" fn stop(_: i32) {
 unsafe extern "C" {
     fn lumi_disable_materialization() -> i32;
 }
-fn guard_cloud() -> Result<()> {
+pub fn guard_cloud() -> Result<()> {
     ensure!(
         unsafe { lumi_disable_materialization() } == 0,
         "cannot prohibit cloud downloads"

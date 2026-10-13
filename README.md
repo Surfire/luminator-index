@@ -4,7 +4,7 @@ A local search engine for filenames, document text, and meaning.
 
 Luminator 计划以 Rust 管理本地索引和查询，结合原生 macOS 能力，向 Tinycast、Raycast 扩展和命令行提供同一套搜索引擎。仓库名为 `luminator-index`。
 
-**当前状态：文件名引擎、CLI 和可选中文全文已实现。** 支持中文、全拼/首字母、路径、筛选、SQLite 持久化、FSEvents 实时更新及离线事件恢复。Tinycast 的独立本地 AGPL 体验分支已接入主搜索；可选正文支持已下载的 TXT/MD、PDF 文本层和 DOCX；模型权重已校验，尚未接入推理或 Raycast 扩展。
+**当前状态：文件名引擎、CLI 和可选中文全文已实现。** 支持中文、全拼/首字母、路径、筛选、SQLite 持久化、FSEvents 实时更新及离线事件恢复。Tinycast 的独立本地 AGPL 体验分支已接入主搜索；可选正文支持已下载的 TXT/MD、PDF 文本层和 DOCX；模型权重已校验，独立 Metal 推理实验已跑通；尚未接入语义搜索或 Raycast 扩展。多目录设置与模型实测见 [推理后端报告](docs/inference-backends.md)。
 
 ## 编译与试用
 

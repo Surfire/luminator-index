@@ -119,6 +119,7 @@ fn absolute(path: PathBuf) -> Result<PathBuf> {
 }
 fn main() -> Result<()> {
     let args = Args::parse();
+    luminator_index::content::guard_cloud()?;
     let value = match args.command {
         Command::Content { command } => {
             let path = db_path(args.db)?;

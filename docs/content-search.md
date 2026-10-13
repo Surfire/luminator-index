@@ -1,6 +1,6 @@
 # 已下载文档的中文全文搜索
 
-2026-10-13 实现；名称引擎保持独立。本阶段没有向量检索、模型加载、问答或 OCR。
+2026-10-13 实现；名称引擎保持独立。全文通道没有向量检索、问答或 OCR；独立模型实验另见 [后端报告](inference-backends.md)。
 
 ## 运行与开关
 
@@ -26,7 +26,7 @@ target/release/luminator --db /tmp/content.sqlite content serve \
 
 Tinycast 本地体验分支的 Settings → File Search → Luminator 中新增
 **Search downloaded document text**，默认关闭，备份及 `settings.json` 均不携带此授权。
-开关读取所选名称索引的同一根目录；更换索引路径自动关闭正文授权。
+全局开关配合每目录的“正文”勾选生效；新增目录默认仅名称。
 正文库位于名称库旁：`names.sqlite` → `names.content.sqlite`。
 第一次输入搜索后启动正文进程，关闭开关或退出应用停止它。
 名称保留 8 ms 输入合并窗口；正文独立等待 150 ms 再查询，按路径去重后补在名称结果后。
@@ -95,12 +95,25 @@ Rust 进程及 Swift helper 都先设置进程级
 正文增量目前约 5 秒轮询，明显慢于名称 FSEvents 通道；下一轮可改事件驱动，不影响现有名称速度。
 本轮未用 GUI 自动化测试，不夺取桌面焦点；Swift 解码/会话/选择保持用无界面 harness 验证。
 
-## 文本模型就绪，推理尚未接入
+## 文本模型实验已跑通，尚未接入搜索
 
 已按 DigUp `ModelFiles.swift` 的固定清单下载并校验 EmbeddingGemma 2 Q8_0 文本 GGUF：
 309,855,456 字节，SHA-256 `2188ac1deca4b77dffefd603c2776a9d76d9d74ec01841392982ebb840b09135`。
 来源为 hf-mirror.com，revision `bfcd298762cc34d0357ece5ebdd31791a3a374d8`，清单在
 [`docs/embeddinggemma-2-manifest.json`](embeddinggemma-2-manifest.json)。未下载多媒体权重。
 本机权重位于 `~/.local/share/luminator/models/embeddinggemma-2/`，没有随应用或源码分发。
-下载和完整性校验不代表模型推理、中文语义质量或速度已经验收。
+独立推理、合成中文样例和速度测试见 [后端报告](inference-backends.md)；真实语义质量仍待验收。
 下一阶段沿用 [模型接入方案](semantic-next-stage.md) 的独立 worker 与可选语义开关。
+
+
+## 多目录体验配置更新
+
+Tinycast 本地分支现在支持目录列表、添加/移除/重建，以及每个目录的全文勾选。
+每个根目录独立数据库和服务，名称并行查询后按路径去重；全局全文开关仍须开启。
+新增目录默认仅名称，移除目录停止服务但保留数据库。索引保存位置设置只影响以后新增目录。
+界面与代码没有个人路径常量；本机初始目录通过本地设置配置。
+
+本轮在四个新增目录中索引 449,307 条元数据；五库并行的 30 次查询往返
+p50 1.13 ms、p95 1.80 ms、最大 309 ms（含首次较慢查询），不含 UI 时间。
+新版协调器的后台集成探针通过中文、全拼、首字母根目录命中、跨库路径去重与正文查询。
+所有 CLI 入口均启用内核禁止云文件物化策略；只枚举已可见元数据，不自动下载正文。

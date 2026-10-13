@@ -1,0 +1,46 @@
+{
+  "runtime": {
+    "runtime": "llama.cpp-b11461-digup-no-logits",
+    "ready": true,
+    "max_tokens": 2048,
+    "gpu": true,
+    "dimensions": 768,
+    "load_ms": 651.790976524353
+  },
+  "cold_query_wall_ms": 17.466124991187826,
+  "warm_queries": 36,
+  "warm_query_wall": {
+    "p50_ms": 6.593354497454129,
+    "p95_ms": 10.219874995527789,
+    "max_ms": 10.275833017658442
+  },
+  "warm_query_compute": {
+    "p50_ms": 5.6819915771484375,
+    "p95_ms": 9.362936019897461,
+    "max_ms": 9.503960609436035
+  },
+  "document_batch": {
+    "texts": 12,
+    "tokens": 300,
+    "wall_ms": 359.4980410125572
+  },
+  "synthetic_retrieval": {
+    "768": {
+      "top1": 12,
+      "top3": 12,
+      "queries": 12
+    },
+    "256": {
+      "top1": 12,
+      "top3": 12,
+      "queries": 12
+    }
+  },
+  "norm_min": 0.9999999491418659,
+  "norm_max": 1.0000000358157421,
+  "repeat_max_abs_delta": 0.0,
+  "rss_mib_after_queries": 483.203125,
+  "oversized_input_rejected": true,
+  "worker_recovered": true,
+  "scope": "12 synthetic pairs, sequential requests, text only; no real-corpus accuracy claim"
+}

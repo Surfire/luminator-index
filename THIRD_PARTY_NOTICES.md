@@ -32,4 +32,16 @@ extraction methods in DigUp `Sources/DigUpKit/Extractors.swift`, commit
   checks, bounded input/output, paragraph/page locators; no OCR or media models.
 - `docs/embeddinggemma-2-manifest.json` records the text GGUF revision/size/hash from
   DigUp's `ModelFiles.swift`. Weights are downloaded separately, never bundled
-  with this MIT repository. No DigUp inference runtime is copied in this stage.
+  with this MIT repository. The optional text inference experiment below reuses its runtime setup.
+
+`native/TextEmbedder.swift`, `scripts/build-text-model.sh` and
+`vendor/digup/llama.cpp-no-logits.patch` adapt DigUp's `LlamaEmbedder.swift`,
+`build-llama.sh`, and the identically named patch at the same commit above.
+Changes: text-only JSONL worker, 2048-token bound, explicit rejection of oversized
+input, no HTTP server or app lifetime coupling. DigUp copyright/license retained.
+
+The optional worker links llama.cpp b11461, commit
+`4d756bc72bf00a4aacf410ae15a2d315f3db400d` (MIT, Georgi Gerganov and contributors).
+The build checks this commit and includes DigUp's no-logits embedding patch.
+Full llama.cpp license: `vendor/llama.cpp/LICENSE`. The runtime and model weights
+are not automatically installed with the filename CLI or Tinycast preview.
