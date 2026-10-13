@@ -1,0 +1,40 @@
+{
+  "before": {
+    "query": {
+      "samples": 55,
+      "p50_ms": 0.15741700190119445,
+      "p95_ms": 0.4833339771721512,
+      "p99_ms": 0.7093749882187694,
+      "max_ms": 0.7093749882187694
+    },
+    "status": {
+      "cloud_directories": 0,
+      "entries": 7245,
+      "index_allocated_bytes": 938862,
+      "name_pool_bytes": 456434,
+      "physical_footprint_bytes": 10584592,
+      "physical_footprint_peak_bytes": 10682896,
+      "slots": 7278
+    }
+  },
+  "after": {
+    "query": {
+      "samples": 55,
+      "p50_ms": 0.08020899258553982,
+      "p95_ms": 0.37975001032464206,
+      "p99_ms": 0.5395000043790787,
+      "max_ms": 0.5395000043790787
+    },
+    "status": {
+      "cloud_directories": 0,
+      "entries": 7245,
+      "index_allocated_bytes": 1056768,
+      "name_pool_bytes": 456616,
+      "physical_footprint_bytes": 9863720,
+      "physical_footprint_peak_bytes": 9994792,
+      "slots": 7278
+    }
+  },
+  "ordered_results_equal": true,
+  "root_three_forms_top1": true
+}

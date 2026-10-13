@@ -37,11 +37,13 @@ unsafe extern "C" {
     fn sift_read_dir(fd: i32, scratch: *mut c_void, size: usize, out: *mut Dirent, cap: i32)
     -> i32;
     pub(crate) fn lumi_search(
-        blob: *const u8,
-        names: *const Span,
-        full: *const Span,
-        initials: *const Span,
-        kinds: *const u8,
+        blob: *const *const u8,
+        names: *const *const Span,
+        full: *const *const Span,
+        initials: *const *const Span,
+        kinds: *const *const u8,
+        signatures: *const *const u64,
+        required: u64,
         candidates: *const u32,
         start: u32,
         end: u32,

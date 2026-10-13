@@ -1,4 +1,5 @@
 use crate::native::{self, Span};
+use crate::paged::Paged;
 use anyhow::{Result, ensure};
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -20,9 +21,128 @@ pub fn normalize(s: &str) -> String {
     }
 }
 
+// A missing adjacent-byte bit proves a substring cannot match; collisions only add work.
+fn signature(text: &str) -> u64 {
+    text.as_bytes().windows(2).fold(0, |bits, pair| {
+        let key = u32::from(pair[0]) << 8 | u32::from(pair[1]);
+        bits | (1u64 << (key.wrapping_mul(0x9e3779b1) >> 26))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn signature_filter_preserves_substrings_and_snapshot_isolation() {
+        let mut index = Index::new("/synthetic".into(), 5000);
+        for id in 0..5000 {
+            let name = normalize(&format!("资料cafe\u{301}_report_{id}.pdf"));
+            index
+                .put(&Record {
+                    id,
+                    parent: 0,
+                    name: name.as_str().into(),
+                    folded: name.as_str().into(),
+                    full: "ziliaoreport".into(),
+                    initials: "zlr".into(),
+                    kind: if id == 0 { 1 } else { 0 },
+                    dev: 0,
+                    ino: id as u64,
+                    size: 0,
+                    mtime: 0,
+                })
+                .unwrap();
+        }
+        let old = index.clone();
+        let mut oracle = index.clone();
+        for id in 0..oracle.slots() {
+            oracle.signatures[id] = u64::MAX;
+        }
+        for mode in [MatchMode::Auto, MatchMode::Filename, MatchMode::Pinyin] {
+            let options = QueryOptions {
+                mode,
+                limit: 50,
+                ..Default::default()
+            };
+            for q in [
+                "资",
+                "资料",
+                "料c",
+                "CAFÉ",
+                "cafe\u{301}",
+                "é_r",
+                "port",
+                "_4096",
+                "ilia",
+                "zlr",
+                "r",
+                "pdf",
+                "不存在",
+                "-absent-",
+            ] {
+                let result = |index: &Index| {
+                    index
+                        .query(q, &options)
+                        .into_iter()
+                        .map(|h| (h.id, h.score))
+                        .collect::<Vec<_>>()
+                };
+                assert_eq!(result(&index), result(&oracle), "{q}");
+            }
+        }
+        index
+            .put(&Record {
+                id: 4096,
+                parent: 0,
+                name: "全新名字".into(),
+                folded: "全新名字".into(),
+                full: "quanxinmingzi".into(),
+                initials: "qxmz".into(),
+                kind: 0,
+                dev: 0,
+                ino: 4096,
+                size: 9,
+                mtime: 42,
+            })
+            .unwrap();
+        let published = index.clone();
+        index.kinds[4096] |= 128;
+        for q in ["全新名字", "quanxinmingzi", "qxmz"] {
+            assert!(
+                old.query(
+                    q,
+                    &QueryOptions {
+                        limit: 20,
+                        ..Default::default()
+                    }
+                )
+                .is_empty()
+            );
+            assert_eq!(
+                published.query(
+                    q,
+                    &QueryOptions {
+                        limit: 20,
+                        ..Default::default()
+                    }
+                )[0]
+                .id,
+                4096
+            );
+            assert!(
+                index
+                    .query(
+                        q,
+                        &QueryOptions {
+                            limit: 20,
+                            ..Default::default()
+                        }
+                    )
+                    .is_empty()
+            );
+        }
+    }
+
     #[test]
     fn parallel_partitions_keep_global_ids_and_uncapped_top_k() {
         let mut index = Index::new("/synthetic".into(), 70_000);
@@ -203,57 +323,57 @@ pub(crate) struct Record<'a> {
 #[derive(Clone)]
 pub struct Index {
     pub root: PathBuf,
-    blob: Vec<u8>,
-    names: Vec<Span>,
-    folded: Vec<Span>,
-    full: Vec<Span>,
-    initials: Vec<Span>,
-    pub(crate) parents: Vec<u32>,
-    pub(crate) kinds: Vec<u8>,
-    pub(crate) devices: Vec<i32>,
-    pub(crate) inodes: Vec<u64>,
-    pub(crate) sizes: Vec<u64>,
-    pub(crate) mtimes: Vec<i64>,
+    blob: Paged<u8, 65536>,
+    signatures: Paged<u64>,
+    names: Paged<Span>,
+    folded: Paged<Span>,
+    full: Paged<Span>,
+    initials: Paged<Span>,
+    pub(crate) parents: Paged<u32>,
+    pub(crate) kinds: Paged<u8>,
+    pub(crate) devices: Paged<i32>,
+    pub(crate) inodes: Paged<u64>,
+    pub(crate) sizes: Paged<u64>,
+    pub(crate) mtimes: Paged<i64>,
 }
 
 impl Index {
     pub(crate) fn new(root: PathBuf, capacity: usize) -> Self {
         Self {
             root,
-            blob: Vec::with_capacity(capacity.saturating_mul(32)),
-            names: Vec::with_capacity(capacity),
-            folded: Vec::with_capacity(capacity),
-            full: Vec::with_capacity(capacity),
-            initials: Vec::with_capacity(capacity),
-            parents: Vec::with_capacity(capacity),
-            kinds: Vec::with_capacity(capacity),
-            devices: Vec::with_capacity(capacity),
-            inodes: Vec::with_capacity(capacity),
-            sizes: Vec::with_capacity(capacity),
-            mtimes: Vec::with_capacity(capacity),
+            blob: Paged::with_capacity(capacity.saturating_mul(32)),
+            signatures: Paged::with_capacity(capacity),
+            names: Paged::with_capacity(capacity),
+            folded: Paged::with_capacity(capacity),
+            full: Paged::with_capacity(capacity),
+            initials: Paged::with_capacity(capacity),
+            parents: Paged::with_capacity(capacity),
+            kinds: Paged::with_capacity(capacity),
+            devices: Paged::with_capacity(capacity),
+            inodes: Paged::with_capacity(capacity),
+            sizes: Paged::with_capacity(capacity),
+            mtimes: Paged::with_capacity(capacity),
         }
     }
     fn text(&self, span: Span) -> &str {
         // Only validated UTF-8 names/keys are admitted to this owned byte pool.
         unsafe {
-            std::str::from_utf8_unchecked(
-                &self.blob[span.start as usize..span.start as usize + span.len as usize],
-            )
+            std::str::from_utf8_unchecked(self.blob.slice(span.start as usize, span.len as usize))
         }
     }
     fn intern(&mut self, value: &str) -> Result<Span> {
         ensure!(
             self.blob
                 .len()
-                .checked_add(value.len())
+                .checked_add(value.len() + 65536)
                 .is_some_and(|n| n <= u32::MAX as usize),
             "name pool exceeds 4 GiB; split the index"
         );
+        ensure!(value.len() <= 65536, "filename key exceeds 64 KiB");
         let span = Span {
-            start: self.blob.len() as u32,
+            start: self.blob.append(value.as_bytes()) as u32,
             len: value.len() as u32,
         };
-        self.blob.extend_from_slice(value.as_bytes());
         Ok(span)
     }
     pub(crate) fn put(&mut self, r: &Record<'_>) -> Result<()> {
@@ -285,7 +405,13 @@ impl Index {
             let initials = self.intern(&r.initials)?;
             (name, folded, full, initials)
         };
+        let bits = if unchanged_keys {
+            self.signatures[i]
+        } else {
+            signature(&r.folded) | signature(&r.full) | signature(&r.initials)
+        };
         if i == self.kinds.len() {
+            self.signatures.push(bits);
             self.names.push(name);
             self.folded.push(folded);
             self.full.push(full);
@@ -297,34 +423,33 @@ impl Index {
             self.sizes.push(r.size);
             self.mtimes.push(r.mtime);
         } else {
-            self.names[i] = name;
-            self.folded[i] = folded;
-            self.full[i] = full;
-            self.initials[i] = initials;
-            self.parents[i] = r.parent;
-            self.kinds[i] = r.kind;
-            self.devices[i] = r.dev;
-            self.inodes[i] = r.ino;
-            self.sizes[i] = r.size;
-            self.mtimes[i] = r.mtime;
+            if !unchanged_keys {
+                self.signatures[i] = bits;
+                self.names[i] = name;
+                self.folded[i] = folded;
+                self.full[i] = full;
+                self.initials[i] = initials;
+            }
+            if self.parents[i] != r.parent {
+                self.parents[i] = r.parent;
+            }
+            if self.kinds[i] != r.kind {
+                self.kinds[i] = r.kind;
+            }
+            if self.devices[i] != r.dev {
+                self.devices[i] = r.dev;
+            }
+            if self.inodes[i] != r.ino {
+                self.inodes[i] = r.ino;
+            }
+            if self.sizes[i] != r.size {
+                self.sizes[i] = r.size;
+            }
+            if self.mtimes[i] != r.mtime {
+                self.mtimes[i] = r.mtime;
+            }
         }
         Ok(())
-    }
-    pub(crate) fn record(&self, id: u32) -> Record<'static> {
-        let i = id as usize;
-        Record {
-            id,
-            parent: self.parents[i],
-            name: self.text(self.names[i]).to_owned().into(),
-            folded: self.text(self.folded[i]).to_owned().into(),
-            full: self.text(self.full[i]).to_owned().into(),
-            initials: self.text(self.initials[i]).to_owned().into(),
-            kind: self.kinds[i],
-            dev: self.devices[i],
-            ino: self.inodes[i],
-            size: self.sizes[i],
-            mtime: self.mtimes[i],
-        }
     }
     pub fn entries(&self) -> usize {
         self.kinds
@@ -359,6 +484,7 @@ impl Index {
     }
     pub fn allocated_bytes(&self) -> usize {
         self.blob.capacity()
+            + self.signatures.capacity() * 8
             + (self.names.capacity()
                 + self.folded.capacity()
                 + self.full.capacity()
@@ -397,47 +523,65 @@ impl Index {
             let suffix = format!("{prefix}/");
             let mut parents = vec![0u8; self.slots()];
             let mut count = 0;
-            for (i, &kind) in self.kinds.iter().enumerate() {
-                if kind & 128 != 0 {
-                    continue;
-                }
-                if i == 0 {
-                    if normalize(&self.root.to_string_lossy()).contains(&q) {
-                        ids[count] = 0;
+            for (page, ((kinds, ancestors), names)) in self
+                .kinds
+                .chunks()
+                .zip(self.parents.chunks())
+                .zip(self.folded.chunks())
+                .enumerate()
+            {
+                for (slot, &kind) in kinds.iter().enumerate() {
+                    let i = page * 4096 + slot;
+                    if kind & 128 != 0 {
+                        continue;
+                    }
+                    if i == 0 {
+                        if normalize(&self.root.to_string_lossy()).contains(&q) {
+                            ids[count] = 0;
+                            scores[count] = 1000;
+                            count += 1;
+                        }
+                        continue;
+                    }
+                    let p = ancestors[slot] as usize;
+                    if parents[p] == 0 {
+                        let parent = format!(
+                            "{}/",
+                            normalize(&self.path(p as u32).to_string_lossy()).trim_end_matches('/')
+                        );
+                        parents[p] = 1
+                            | if parent.contains(&q) { 2 } else { 0 }
+                            | if parent.ends_with(&suffix) { 4 } else { 0 };
+                    }
+                    if parents[p] & 2 != 0
+                        || (parents[p] & 4 != 0
+                            && self.text(names[slot]).starts_with(final_component))
+                    {
+                        ids[count] = i as u32;
                         scores[count] = 1000;
                         count += 1;
                     }
-                    continue;
-                }
-                let p = self.parents[i] as usize;
-                if parents[p] == 0 {
-                    let parent = format!(
-                        "{}/",
-                        normalize(&self.path(p as u32).to_string_lossy()).trim_end_matches('/')
-                    );
-                    parents[p] = 1
-                        | if parent.contains(&q) { 2 } else { 0 }
-                        | if parent.ends_with(&suffix) { 4 } else { 0 };
-                }
-                if parents[p] & 2 != 0
-                    || (parents[p] & 4 != 0
-                        && self.text(self.folded[i]).starts_with(final_component))
-                {
-                    ids[count] = i as u32;
-                    scores[count] = 1000;
-                    count += 1;
                 }
             }
             std::iter::once(0..count).collect::<Vec<_>>()
         } else {
+            let blob_pages = self.blob.pointers();
+            let name_pages = self.folded.pointers();
+            let full_pages = self.full.pointers();
+            let initial_pages = self.initials.pointers();
+            let kind_pages = self.kinds.pointers();
+            let signature_pages = self.signatures.pointers();
+            let required = signature(&q);
             let scan = |start: usize, out: &mut [u32], ranks: &mut [i32]| unsafe {
                 // Read-only index spans and disjoint writable slices stay alive until C returns.
                 native::lumi_search(
-                    self.blob.as_ptr(),
-                    self.folded.as_ptr(),
-                    self.full.as_ptr(),
-                    self.initials.as_ptr(),
-                    self.kinds.as_ptr(),
+                    blob_pages.as_ptr(),
+                    name_pages.as_ptr(),
+                    full_pages.as_ptr(),
+                    initial_pages.as_ptr(),
+                    kind_pages.as_ptr(),
+                    signature_pages.as_ptr(),
+                    required,
                     candidates.map_or(std::ptr::null(), <[u32]>::as_ptr),
                     start as u32,
                     (start + out.len()) as u32,

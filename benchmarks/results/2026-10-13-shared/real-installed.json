@@ -1,0 +1,15 @@
+{
+  "installed_helper_sha256": "9611a6e70e9fe1fd5e61b5bca0a14e4d15894d745cc108469e0adaad5b665c31",
+  "signature_verified": true,
+  "root_three_forms_top1": true,
+  "old_helper_stopped": true,
+  "main_app_restarted": false,
+  "next_search_starts_new_helper": true,
+  "installed_headless_session": {
+    "max_ms": 11.388875,
+    "p50_ms": 9.951416,
+    "p95_ms": 11.338,
+    "samples": 60,
+    "scope": "headless Swift session + socket + real filename index; excludes SwiftUI rendering"
+  }
+}

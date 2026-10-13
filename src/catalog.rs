@@ -6,8 +6,7 @@ use anyhow::{Context, Result, ensure};
 use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde::Serialize;
 use std::{
-    cell::RefCell,
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     fs::{self, File, OpenOptions},
     os::{
         fd::AsRawFd,
@@ -19,7 +18,6 @@ use std::{
 
 pub struct Catalog {
     conn: Connection,
-    changed: RefCell<Option<BTreeSet<u32>>>,
 }
 pub struct WriterLock(File);
 impl WriterLock {
@@ -84,10 +82,7 @@ impl Catalog {
             conn.pragma_query_value(None, "user_version", |r| r.get::<_, i32>(0))? == 2,
             "index format changed; scan into a new database (old database is preserved)"
         );
-        Ok(Self {
-            conn,
-            changed: RefCell::new(None),
-        })
+        Ok(Self { conn })
     }
     pub fn meta(&self, key: &str) -> Result<Option<String>> {
         Ok(self
@@ -169,9 +164,6 @@ impl Catalog {
             size=excluded.size,mtime=excluded.mtime,live=1")?
             .execute(params![r.id,r.parent,r.name.as_ref(),r.folded.as_ref(),r.full.as_ref(),r.initials.as_ref(),r.kind,r.dev,r.ino as i64,r.size as i64,r.mtime])?;
         index.put(r)?;
-        if let Some(ids) = self.changed.borrow_mut().as_mut() {
-            ids.insert(r.id);
-        }
         Ok(true)
     }
     fn remove_tree(&self, index: &mut Index, id: u32) -> Result<u64> {
@@ -185,9 +177,6 @@ impl Catalog {
         while let Some(r) = rows.next()? {
             let i = r.get::<_, u32>(0)? as usize;
             index.kinds[i] |= 128;
-            if let Some(ids) = self.changed.borrow_mut().as_mut() {
-                ids.insert(i as u32);
-            }
             removed += 1;
         }
         Ok(removed)
@@ -375,7 +364,6 @@ impl Catalog {
         pinyin: &Pinyin,
     ) -> Result<UpdateStats> {
         let started = Instant::now();
-        *self.changed.borrow_mut() = Some(BTreeSet::new());
         let mut dirs = HashSet::new();
         let mut cursor = self.cursor()?;
         let mut full = false;
@@ -430,15 +418,6 @@ impl Catalog {
         tx.commit()?;
         stats.elapsed_ms = started.elapsed().as_secs_f64() * 1000.;
         Ok(stats)
-    }
-    pub(crate) fn take_changes(&self, index: &Index) -> Vec<Record<'static>> {
-        self.changed
-            .borrow_mut()
-            .take()
-            .unwrap_or_default()
-            .into_iter()
-            .map(|id| index.record(id))
-            .collect()
     }
     pub(crate) fn history_valid(&self, index: &Index) -> Result<bool> {
         let meta = fs::metadata(&index.root)?;

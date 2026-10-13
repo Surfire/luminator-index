@@ -53,9 +53,11 @@ target/release/luminator --db benchmarks/local-results/million.sqlite benchmark 
 uv run --no-project python3 benchmarks/live.py --db benchmarks/local-results/million.sqlite --root benchmarks/local-results/million-tree --output benchmarks/local-results/live.json
 ```
 
-后台写入线程负责 FSEvents、扫描和 SQLite 事务，查询继续使用上一份已提交索引；提交后只传递变更记录。启动时额外复制一份内存索引，避免每次更新复制百万条目，代价是更高内存峰值。连续延长名称查询时复用完整候选集，索引更新或匹配模式变化后失效，不从 Top 20 裁剪候选。详见 [交互与批量更新优化](docs/responsive-search.md)。
+后台写入线程负责 FSEvents、扫描和 SQLite 事务，查询继续使用上一份已提交索引。两者共享不可变数据块，仅修改时复制相关块；事务提交后发布共享快照，避免整表复制。名称/拼音使用相邻字节签名跳过不可能匹配的记录，仍由原有匹配器验证和排序；连续输入复用完整候选集，不从 Top 20 裁剪候选。百万条目本轮首段普通查询 socket p95 **2.12 ms**、连续输入 **1.34 ms**、批量更新期间 **1.83 ms**，峰值约 **122–132 MiB**。详见 [共享索引与首段查询实测](docs/shared-index-search.md)，上一轮记录见 [交互与批量更新优化](docs/responsive-search.md)。
 
 高频长期重命名/删除会留下旧名称池和 tombstone，尚未实现在线压缩；重新启动会重建紧凑名称池。元数据修改时间以秒记录，不能识别同秒内等大小的内容修改；内容 generation 将在正文阶段实现。
+
+下一阶段已整理 [可选本地全文与 EmbeddingGemma 2 接入方案](docs/semantic-next-stage.md)，目前仍未下载模型或读取正文。
 
 ## 完整 v0.1 的后续目标
 

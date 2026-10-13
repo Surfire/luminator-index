@@ -58,7 +58,7 @@ def daemon(binary, db, folder):
                 proc.wait(timeout=30)
 
 
-def bulk(binary, folder, source=None):
+def bulk(binary, folder, source=None, trials=10):
     folder.mkdir()
     root = folder/'tree'
     if source:
@@ -77,7 +77,7 @@ def bulk(binary, folder, source=None):
     latency=[]; visibility=[]; counts=[]
     with daemon(binary,db,folder) as sock:
         initial_entries=ask(sock)[0]['entries']
-        for trial in range(10):
+        for trial in range(trials):
             target=root/('bulk-'+folder.parent.name); assert not target.exists(); staging.rename(target)
             start=time.monotonic(); samples=0
             while True:
@@ -98,7 +98,7 @@ def bulk(binary, folder, source=None):
         status=ask(sock)[0]
         assert status['entries']==initial_entries
     return dict(query_during_update=summary(latency),visibility=summary(visibility),
-                queries_per_update=counts,query_samples_ms=latency,status=status)
+                queries_per_update=counts,query_samples_ms=latency,visibility_samples_ms=visibility,status=status)
 
 
 def typing(binary, db, folder):
@@ -120,19 +120,41 @@ def typing(binary, db, folder):
     return dict(all=summary(latency),first=summary(first),continued=summary(narrowed),status=status),rows
 
 
+def first(binary, db, folder):
+    folder.mkdir(); copy=folder/'names.sqlite'; copydb(db,copy)
+    cases=json.loads((Path(__file__).parent/'queries.json').read_text())
+    groups={}; rows=[]; measurements=[]
+    started=time.perf_counter()
+    with daemon(binary,copy,folder) as sock:
+        startup_ms=(time.perf_counter()-started)*1000
+        for case in cases:
+            timings=[]
+            for _ in range(20):
+                ask(sock,'')
+                reply,ms=ask(sock,case['query'])
+                timings.append(ms)
+                rows.append([(h['id'],h['score'],h['match_kind']) for h in reply['results']])
+            groups.setdefault(case['category'],[]).extend(timings)
+            measurements.append(dict(**case,**summary(timings),samples_ms=timings))
+        status=ask(sock)[0]
+    return dict(groups={k:summary(v) for k,v in groups.items()},measurements=measurements,
+                startup_ms=startup_ms,status=status),rows
+
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--before',type=Path,required=True);p.add_argument('--after',type=Path,required=True)
-    p.add_argument('--mode',choices=['bulk','typing'],required=True)
+    p.add_argument('--mode',choices=['bulk','typing','first'],required=True)
     p.add_argument('--reverse',action='store_true')
+    p.add_argument('--trials',type=int,default=10)
     p.add_argument('--db',type=Path);p.add_argument('--output',type=Path,required=True)
     args=p.parse_args();result={}; allrows=[]
     with tempfile.TemporaryDirectory(prefix='lumi-responsive-',dir='/tmp') as work:
         for label in (['after','before'] if args.reverse else ['before','after']):
             binary=getattr(args,label).resolve(); folder=Path(work)/label
-            if args.mode=='bulk': result[label]=bulk(binary,folder,args.db.resolve() if args.db else None)
+            if args.mode=='bulk': result[label]=bulk(binary,folder,args.db.resolve() if args.db else None,args.trials)
             else:
-                result[label],rows=typing(binary,args.db.resolve(),folder);allrows.append(rows)
+                result[label],rows=(first if args.mode=='first' else typing)(binary,args.db.resolve(),folder);allrows.append(rows)
         if allrows:
             assert allrows[0]==allrows[1], 'candidate cache changed results or ranking'
             result['ordered_results_equal']=True

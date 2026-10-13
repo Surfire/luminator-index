@@ -1,6 +1,6 @@
 use crate::{
     Catalog, Index, MatchMode, QueryOptions, WriterLock, footprint, footprint_peak,
-    index::{QueryCache, Record},
+    index::QueryCache,
     native::{Pinyin, Watcher},
 };
 use anyhow::{Context, Result, ensure};
@@ -130,7 +130,7 @@ pub fn serve(db: &Path, socket: &Path) -> Result<()> {
         "{}",
         json!({"ready":true,"entries":index.entries(),"restore_ms":restore_ms,"startup_ms":start.elapsed().as_secs_f64()*1000.})
     );
-    // Copy once at startup; subsequent publications contain only committed changed records.
+    // Snapshots share immutable pages; only modified pages are copied by the writer.
     let mut writer_index = index.clone();
     let (send, receive) = mpsc::sync_channel(1);
     thread::scope(|scope| {
@@ -146,9 +146,10 @@ pub fn serve(db: &Path, socket: &Path) -> Result<()> {
                     let mut events = vec![first];
                     events.extend(watcher.events.try_iter().take(19_999));
                     let stats = catalog.apply_events(&mut writer_index, &events, &pinyin)?;
-                    let changes = catalog.take_changes(&writer_index);
                     eprintln!("{}", json!({"update":stats}));
-                    if !changes.is_empty() && send.send(Ok(changes)).is_err() {
+                    if stats.added + stats.changed + stats.removed > 0
+                        && send.send(Ok(writer_index.clone())).is_err()
+                    {
                         break;
                     }
                 }
@@ -171,16 +172,14 @@ pub fn serve(db: &Path, socket: &Path) -> Result<()> {
 fn serve_queries(
     listener: UnixListener,
     index: &mut Index,
-    receive: &mpsc::Receiver<Result<Vec<Record<'static>>>>,
+    receive: &mpsc::Receiver<Result<Index>>,
 ) -> Result<()> {
     let mut cache = QueryCache::default();
     while !STOP.load(Ordering::Relaxed) {
         match receive.try_recv() {
-            Ok(changes) => {
+            Ok(snapshot) => {
                 cache.clear();
-                for record in changes? {
-                    index.put(&record)?;
-                }
+                *index = snapshot?;
             }
             Err(mpsc::TryRecvError::Empty) => {}
             Err(mpsc::TryRecvError::Disconnected) => anyhow::bail!("index writer stopped"),

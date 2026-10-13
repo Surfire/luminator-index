@@ -2,6 +2,7 @@ pub mod benchmark;
 pub mod catalog;
 pub mod index;
 mod native;
+mod paged;
 pub mod server;
 pub use catalog::{Catalog, UpdateStats, WriterLock};
 pub use index::{Hit, Index, MatchMode, QueryOptions};

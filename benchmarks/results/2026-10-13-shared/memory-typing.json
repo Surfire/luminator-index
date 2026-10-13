@@ -1,0 +1,67 @@
+{
+  "before": {
+    "all": {
+      "samples": 440,
+      "p50_ms": 1.2462919985409826,
+      "p95_ms": 3.6153749970253557,
+      "p99_ms": 3.7086670054122806,
+      "max_ms": 4.025542002636939
+    },
+    "first": {
+      "samples": 80,
+      "p50_ms": 3.0885000014677644,
+      "p95_ms": 3.7086670054122806,
+      "p99_ms": 4.025542002636939,
+      "max_ms": 4.025542002636939
+    },
+    "continued": {
+      "samples": 360,
+      "p50_ms": 1.2140829931013286,
+      "p95_ms": 1.342833013040945,
+      "p99_ms": 1.437750004697591,
+      "max_ms": 3.645332995802164
+    },
+    "status": {
+      "cloud_directories": 0,
+      "entries": 1000000,
+      "index_allocated_bytes": 97003104,
+      "name_pool_bytes": 31483885,
+      "physical_footprint_bytes": 215220968,
+      "physical_footprint_peak_bytes": 215941864,
+      "slots": 1000032
+    }
+  },
+  "after": {
+    "all": {
+      "samples": 440,
+      "p50_ms": 1.4037920045666397,
+      "p95_ms": 3.8602499989792705,
+      "p99_ms": 4.093458002898842,
+      "max_ms": 4.553708015009761
+    },
+    "first": {
+      "samples": 80,
+      "p50_ms": 3.3930829958990216,
+      "p95_ms": 4.086375003680587,
+      "p99_ms": 4.4176660012453794,
+      "max_ms": 4.4176660012453794
+    },
+    "continued": {
+      "samples": 360,
+      "p50_ms": 1.3787909992970526,
+      "p95_ms": 1.5026670007500798,
+      "p99_ms": 1.5617079916410148,
+      "max_ms": 4.553708015009761
+    },
+    "status": {
+      "cloud_directories": 0,
+      "entries": 1000000,
+      "index_allocated_bytes": 96751616,
+      "name_pool_bytes": 31489048,
+      "physical_footprint_bytes": 117490288,
+      "physical_footprint_peak_bytes": 118194800,
+      "slots": 1000032
+    }
+  },
+  "ordered_results_equal": true
+}
