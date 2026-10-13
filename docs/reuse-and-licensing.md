@@ -55,7 +55,7 @@ SQLite/llama.cpp/Accelerate 本身不用 Rust 重写。Tinycast/Raycast 的界�
 
 Luminator 原创核心、CLI、客户端接口和自行编写的 Raycast 扩展采用 MIT。MIT 允许商业使用和出售副本；采用 MIT 的同时也允许别人 fork 和商用，商业收入不能依赖源码排他性。
 
-引入 Oil Find / DigUp 代码时保留原版权和完整 MIT 文本，新增第三方来源说明，记录复制/修改的文件与固定提交。阶段 1 已 vendor 的只有上述 Oil Find C 源码。llama.cpp 及实际构建依赖的 notices 将跟随未来发布产物；EmbeddingGemma 2 模型卡标注 [Apache-2.0](https://huggingface.co/google/embeddinggemma-2)，模型与 GGUF 权重另行分发，不塞入 MIT 源码仓库。
+引入 Oil Find / DigUp 代码时保留原版权和完整 MIT 文本，新增第三方来源说明，记录复制/修改的文件与固定提交。阶段 1 引入 Oil Find C 和 pinyin-pro；正文阶段已改编 DigUp 的 PDFKit/Cocoa 提取方法，保留 `vendor/digup/LICENSE`，详见 THIRD_PARTY_NOTICES.md。llama.cpp 及实际构建依赖的 notices 将跟随未来发布产物；EmbeddingGemma 2 模型卡标注 [Apache-2.0](https://huggingface.co/google/embeddinggemma-2)，模型与 GGUF 权重另行分发，不塞入 MIT 源码仓库。
 
 Tinycast 当前是 AGPL-3.0-or-later。其源文件和修改版继续在 Tinycast fork 中保留该许可证，不能复制后换成 MIT。MIT 引擎用公开的本地进程接口独立提供服务；这是工程分离方案，不将“独立进程”视作可以自动免除一切组合分发义务的法律结论。Raycast 是外部宿主，本项目仅使用其公开扩展 API，不复制其闭源应用代码。
 

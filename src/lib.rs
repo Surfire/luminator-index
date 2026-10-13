@@ -1,5 +1,6 @@
 pub mod benchmark;
 pub mod catalog;
+pub mod content;
 pub mod index;
 mod native;
 mod paged;

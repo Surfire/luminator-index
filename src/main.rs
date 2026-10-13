@@ -7,10 +7,7 @@ use luminator_index::{
 use std::{fs, path::PathBuf, time::Instant};
 
 #[derive(Parser)]
-#[command(
-    version,
-    about = "Local filename search. No content parsing or models."
-)]
+#[command(version, about = "Local filename and opt-in document text search.")]
 struct Args {
     #[arg(long, global = true)]
     db: Option<PathBuf>,
@@ -25,6 +22,11 @@ enum Kind {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// Optional local-only document text indexing and search.
+    Content {
+        #[command(subcommand)]
+        command: ContentCommand,
+    },
     /// Create or refresh an index, reading filename metadata only.
     Scan { root: PathBuf },
     /// Query a saved index, or the live daemon with --socket.
@@ -67,6 +69,33 @@ enum Command {
         entries: usize,
     },
 }
+#[derive(Subcommand)]
+enum ContentCommand {
+    Scan {
+        #[arg(long)]
+        names_db: PathBuf,
+        #[arg(long)]
+        helper: PathBuf,
+        #[arg(long)]
+        enable: bool,
+    },
+    Serve {
+        #[arg(long)]
+        names_db: PathBuf,
+        #[arg(long)]
+        helper: PathBuf,
+        #[arg(long)]
+        socket: PathBuf,
+        #[arg(long)]
+        enable: bool,
+    },
+    Query {
+        query: String,
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
+    Status,
+}
 fn db_path(db: Option<PathBuf>) -> Result<PathBuf> {
     let db = db.context("--db PATH is required for this command")?;
     let db = if db.is_absolute() {
@@ -91,6 +120,40 @@ fn absolute(path: PathBuf) -> Result<PathBuf> {
 fn main() -> Result<()> {
     let args = Args::parse();
     let value = match args.command {
+        Command::Content { command } => {
+            let path = db_path(args.db)?;
+            match command {
+                ContentCommand::Scan {
+                    names_db,
+                    helper,
+                    enable,
+                } => luminator_index::content::scan(
+                    &path,
+                    &luminator_index::content::root_from_names(&names_db)?,
+                    &helper,
+                    enable,
+                )?,
+                ContentCommand::Serve {
+                    names_db,
+                    helper,
+                    socket,
+                    enable,
+                } => {
+                    luminator_index::content::serve(
+                        &path,
+                        &luminator_index::content::root_from_names(&names_db)?,
+                        &helper,
+                        &absolute(socket)?,
+                        enable,
+                    )?;
+                    return Ok(());
+                }
+                ContentCommand::Query { query, limit } => {
+                    luminator_index::content::query(&path, Some(&query), limit)?
+                }
+                ContentCommand::Status => luminator_index::content::query(&path, None, 20)?,
+            }
+        }
         Command::Fixture { root, entries } => benchmark::fixture(&root, entries)?,
         Command::Scan { root } => {
             let db = db_path(args.db)?;

@@ -21,3 +21,15 @@ defaults; it does not use private corpus filenames or model inference.
 Rust dependency versions are pinned in `Cargo.lock`; their licenses remain
 their own. SQLite is linked from macOS; CoreFoundation, CoreServices and
 Accelerate are Apple system APIs (Accelerate is not used in phase 1).
+
+`native/ContentExtractor.swift` adapts the PDFKit text-layer and Cocoa DOCX
+extraction methods in DigUp `Sources/DigUpKit/Extractors.swift`, commit
+`6faa29e4c315a3a591de1b41bd78751bdf39588d`:
+
+- Source: https://github.com/ARahim3/DigUp
+- Copyright (c) 2026 Abdur Rahim. MIT; full license in `vendor/digup/LICENSE`.
+- Changes: standalone JSON helper, kernel no-materialization policy, regular-file
+  checks, bounded input/output, paragraph/page locators; no OCR or media models.
+- `docs/embeddinggemma-2-manifest.json` records the text GGUF revision/size/hash from
+  DigUp's `ModelFiles.swift`. Weights are downloaded separately, never bundled
+  with this MIT repository. No DigUp inference runtime is copied in this stage.

@@ -141,3 +141,12 @@ uint64_t lumi_footprint_peak(void) {
         || count < TASK_VM_INFO_REV3_COUNT) return 0;
     return info.ledger_phys_footprint_peak > 0 ? (uint64_t)info.ledger_phys_footprint_peak : 0;
 }
+
+/* Fail closed when the kernel cannot prohibit File Provider materialization. */
+#include <sys/resource.h>
+int lumi_disable_materialization(void) {
+    if (setiopolicy_np(IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES,
+        IOPOL_SCOPE_PROCESS, IOPOL_MATERIALIZE_DATALESS_FILES_OFF) != 0) return -1;
+    return getiopolicy_np(IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES,
+        IOPOL_SCOPE_PROCESS) == IOPOL_MATERIALIZE_DATALESS_FILES_OFF ? 0 : -1;
+}

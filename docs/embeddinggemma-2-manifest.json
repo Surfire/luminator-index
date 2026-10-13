@@ -1,0 +1,9 @@
+{
+  "repository": "ggml-org/embeddinggemma-2-GGUF",
+  "revision": "bfcd298762cc34d0357ece5ebdd31791a3a374d8",
+  "file": "embeddinggemma-2-Q8_0.gguf",
+  "bytes": 309855456,
+  "sha256": "2188ac1deca4b77dffefd603c2776a9d76d9d74ec01841392982ebb840b09135",
+  "source": "hf-mirror.com",
+  "runtime_loaded": false
+}

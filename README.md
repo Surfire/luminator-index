@@ -4,7 +4,7 @@ A local search engine for filenames, document text, and meaning.
 
 Luminator 计划以 Rust 管理本地索引和查询，结合原生 macOS 能力，向 Tinycast、Raycast 扩展和命令行提供同一套搜索引擎。仓库名为 `luminator-index`。
 
-**当前状态：阶段 1 已实现，可运行 macOS 文件名索引引擎和 CLI。** 支持中文、全拼/首字母、路径、筛选、SQLite 持久化、FSEvents 实时更新及离线事件恢复。Tinycast 的独立本地 AGPL 体验分支已接入主搜索；尚未接入全文、模型或 Raycast 扩展。
+**当前状态：文件名引擎、CLI 和可选中文全文已实现。** 支持中文、全拼/首字母、路径、筛选、SQLite 持久化、FSEvents 实时更新及离线事件恢复。Tinycast 的独立本地 AGPL 体验分支已接入主搜索；可选正文支持已下载的 TXT/MD、PDF 文本层和 DOCX；模型权重已校验，尚未接入推理或 Raycast 扩展。
 
 ## 编译与试用
 
@@ -35,7 +35,7 @@ target/release/luminator status --socket /tmp/luminator.sock
 
 2026-10-13 的优化将索引格式更新为 **v2**。旧格式库会被明确拒绝并保持原样；请用另一个数据库路径重新 `scan`，无需读取正文。百万索引的名称匹配最多使用 4 个工作线程，小索引继续单线程；后台 socket 等待可立即被查询唤醒。
 
-索引只读名称元数据，不读文件正文，不跟随符号链接；遇到不可枚举的云占位目录会保留目录名称并统计缺口，不向下遍历。已在一个获授权的真实 OneDrive 目录验证可枚举名称、拼音和增量；这不保证云端所有目录均能枚举。没有 Spotlight 补充索引。请从一个明确选定的小目录开始体验。
+名称模式只读名称元数据，不读文件正文，不跟随符号链接；遇到不可枚举的云占位目录会保留目录名称并统计缺口，不向下遍历。已在一个获授权的真实 OneDrive 目录验证可枚举名称、拼音和增量；这不保证云端所有目录均能枚举。没有 Spotlight 补充索引。请从一个明确选定的小目录开始体验。
 
 ## 阶段 1 验证
 
@@ -55,9 +55,9 @@ uv run --no-project python3 benchmarks/live.py --db benchmarks/local-results/mil
 
 后台写入线程负责 FSEvents、扫描和 SQLite 事务，查询继续使用上一份已提交索引。两者共享不可变数据块，仅修改时复制相关块；事务提交后发布共享快照，避免整表复制。名称/拼音使用相邻字节签名跳过不可能匹配的记录，仍由原有匹配器验证和排序；连续输入复用完整候选集，不从 Top 20 裁剪候选。百万条目本轮首段普通查询 socket p95 **2.12 ms**、连续输入 **1.34 ms**、批量更新期间 **1.83 ms**，峰值约 **122–132 MiB**。详见 [共享索引与首段查询实测](docs/shared-index-search.md)，上一轮记录见 [交互与批量更新优化](docs/responsive-search.md)。
 
-高频长期重命名/删除会留下旧名称池和 tombstone，尚未实现在线压缩；重新启动会重建紧凑名称池。元数据修改时间以秒记录，不能识别同秒内等大小的内容修改；内容 generation 将在正文阶段实现。
+高频长期重命名/删除会留下旧名称池和 tombstone，尚未实现在线压缩；重新启动会重建紧凑名称池。名称元数据修改时间以秒记录；独立正文索引用纳秒 mtime/ctime 与文件身份识别内容变更。
 
-下一阶段已整理 [可选本地全文与 EmbeddingGemma 2 接入方案](docs/semantic-next-stage.md)，目前仍未下载模型或读取正文。
+正文命令、隐私边界、开关及真实测试见 [中文全文搜索](docs/content-search.md)。后续语义推理见 [EmbeddingGemma 2 接入方案](docs/semantic-next-stage.md)。
 
 ## 完整 v0.1 的后续目标
 

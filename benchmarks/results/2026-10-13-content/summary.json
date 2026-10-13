@@ -1,0 +1,62 @@
+{
+  "scan": {
+    "scan": {
+      "cloud_directories": 0,
+      "elapsed_ms": 44926.237541,
+      "unreadable_directories": 0,
+      "unsupported": 1606,
+      "updated": 1282
+    },
+    "status": {
+      "chunks": 75530,
+      "states": {
+        "cloud_only": 279,
+        "no_text": 117,
+        "ready": 1163,
+        "too_large": 3,
+        "unreadable": 2
+      }
+    }
+  },
+  "queries": {
+    "queries": 60,
+    "by_format": {
+      ".md": 15,
+      ".pdf": 15,
+      ".txt": 15,
+      ".docx": 15
+    },
+    "source_file_found": 60,
+    "exact_match_sql_agreement": 60,
+    "false_positives": 0,
+    "negative_queries_correct": 20,
+    "p50_ms": 2.0174164965283126,
+    "p95_ms": 2.9847919940948486,
+    "max_ms": 10.124417021870613,
+    "database_mib": 220.69140625
+  },
+  "names_during": {
+    "n": 500,
+    "p50_ms": 0.46891599777154624,
+    "p95_ms": 0.7425000076182187,
+    "max_ms": 0.8087499882094562
+  },
+  "names_after": {
+    "n": 500,
+    "p50_ms": 0.49158299225382507,
+    "p95_ms": 0.7772079843562096,
+    "max_ms": 1.1802920198533684
+  },
+  "synthetic_incremental": {
+    "create_visible_ms": 5204.414334002649,
+    "modify_visible_ms": 5158.284875011304,
+    "rename_visible_ms": 5183.640791976359,
+    "stop_ms": 127.02195899328217
+  },
+  "source_metadata_comparison": {
+    "files": 3170,
+    "cloud_to_local": 0,
+    "size_or_mtime_changed": 0
+  },
+  "notes": "Authorized OneDrive downloaded files only. Queries use exact text snippets, not semantic relevance. Synthetic incremental test leaves real source files unchanged."
+}
