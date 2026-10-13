@@ -4,6 +4,7 @@ pub mod content;
 pub mod index;
 mod native;
 mod paged;
+pub mod semantic;
 pub mod server;
 pub use catalog::{Catalog, UpdateStats, WriterLock};
 pub use index::{Hit, Index, MatchMode, QueryOptions};

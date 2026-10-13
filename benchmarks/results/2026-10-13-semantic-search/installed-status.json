@@ -1,0 +1,15 @@
+{
+  "preferences_enabled": true,
+  "preferences_paused": false,
+  "status": {
+    "error_message": null,
+    "failed": 0,
+    "indexed": 18440,
+    "model_loaded": true,
+    "paused": false,
+    "total": 92483
+  },
+  "query_results": 10,
+  "semantic_rows": true,
+  "query_wall_ms": 146.76520801731385
+}

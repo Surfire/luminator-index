@@ -108,7 +108,7 @@ fn compact(s: &str) -> String {
         .filter(|c| !c.is_whitespace())
         .collect()
 }
-fn terms(s: &str) -> String {
+pub(crate) fn terms(s: &str) -> String {
     let chars: Vec<_> = s.chars().collect();
     let mut words = BTreeSet::new();
     for c in &chars {
@@ -119,7 +119,7 @@ fn terms(s: &str) -> String {
     }
     words.into_iter().collect::<Vec<_>>().join(" ")
 }
-fn fingerprint(path: &Path) -> Result<(String, bool, u64)> {
+pub(crate) fn fingerprint(path: &Path) -> Result<(String, bool, u64)> {
     let m = fs::symlink_metadata(path)?;
     ensure!(
         m.is_file() && !m.file_type().is_symlink(),

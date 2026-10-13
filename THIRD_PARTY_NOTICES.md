@@ -43,5 +43,5 @@ input, no HTTP server or app lifetime coupling. DigUp copyright/license retained
 The optional worker links llama.cpp b11461, commit
 `4d756bc72bf00a4aacf410ae15a2d315f3db400d` (MIT, Georgi Gerganov and contributors).
 The build checks this commit and includes DigUp's no-logits embedding patch.
-Full llama.cpp license: `vendor/llama.cpp/LICENSE`. The runtime and model weights
-are not automatically installed with the filename CLI or Tinycast preview.
+Full llama.cpp license: `vendor/llama.cpp/LICENSE`. The Tinycast preview bundles the optional text helper and this license. Model
+weights remain separately downloaded and are not included in the repository or app.

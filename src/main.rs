@@ -22,6 +22,21 @@ enum Kind {
 }
 #[derive(Subcommand)]
 enum Command {
+    /// Optional text semantic service over an existing downloaded-content index.
+    Semantic {
+        #[arg(long)]
+        content_db: PathBuf,
+        #[arg(long)]
+        helper: PathBuf,
+        #[arg(long)]
+        model: PathBuf,
+        #[arg(long)]
+        socket: PathBuf,
+        #[arg(long)]
+        paused: bool,
+        #[arg(long)]
+        enable: bool,
+    },
     /// Optional local-only document text indexing and search.
     Content {
         #[command(subcommand)]
@@ -121,6 +136,25 @@ fn main() -> Result<()> {
     let args = Args::parse();
     luminator_index::content::guard_cloud()?;
     let value = match args.command {
+        Command::Semantic {
+            content_db,
+            helper,
+            model,
+            socket,
+            paused,
+            enable,
+        } => {
+            ensure!(enable, "semantic is off; pass --enable");
+            luminator_index::semantic::serve(
+                &db_path(args.db)?,
+                &content_db,
+                &helper,
+                &model,
+                &absolute(socket)?,
+                paused,
+            )?;
+            return Ok(());
+        }
         Command::Content { command } => {
             let path = db_path(args.db)?;
             match command {
