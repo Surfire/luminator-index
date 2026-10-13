@@ -284,8 +284,16 @@ impl Index {
             let suffix = format!("{prefix}/");
             let mut parents = vec![0u8; self.slots()];
             let mut count = 0;
-            for (i, &kind) in self.kinds.iter().enumerate().skip(1) {
+            for (i, &kind) in self.kinds.iter().enumerate() {
                 if kind & 128 != 0 {
+                    continue;
+                }
+                if i == 0 {
+                    if normalize(&self.root.to_string_lossy()).contains(&q) {
+                        ids[count] = 0;
+                        scores[count] = 1000;
+                        count += 1;
+                    }
                     continue;
                 }
                 let p = self.parents[i] as usize;

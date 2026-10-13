@@ -4,7 +4,7 @@ A local search engine for filenames, document text, and meaning.
 
 Luminator 计划以 Rust 管理本地索引和查询，结合原生 macOS 能力，向 Tinycast、Raycast 扩展和命令行提供同一套搜索引擎。仓库名为 `luminator-index`。
 
-**当前状态：阶段 1 已实现，可运行 macOS 文件名索引引擎和 CLI。** 支持中文、全拼/首字母、路径、筛选、SQLite 持久化、FSEvents 实时更新及离线事件恢复。尚未接入全文、模型、Tinycast 或 Raycast。
+**当前状态：阶段 1 已实现，可运行 macOS 文件名索引引擎和 CLI。** 支持中文、全拼/首字母、路径、筛选、SQLite 持久化、FSEvents 实时更新及离线事件恢复。Tinycast 的独立本地 AGPL 体验分支已接入主搜索；尚未接入全文、模型或 Raycast 扩展。
 
 ## 编译与试用
 
@@ -28,6 +28,8 @@ target/release/luminator status --socket /tmp/luminator.sock
 ```
 
 输出为 JSON。每个数据库对应一个根目录；多个目录目前分别建库。直接查询数据库读取保存的快照；运行 `serve` 才持续更新，也可以再次运行 `scan` 刷新。每份数据库同一时间只允许一个 scan/serve 写入者。socket 路径也应位于被索引目录之外。
+
+根目录本身也参与中文、全拼、首字母和路径搜索。早期 v2 索引把根目录存为空名称；升级程序后先停止其 `serve`，对同一目录再次执行 `scan` 即可补齐，无需读取正文或新建数据库。`status.entries` 仍只统计根目录里的条目，不计根目录本身。
 
 查询使用不区分大小写的 NFC 规范化子串；包含 `/` 时查完整路径，返回原始文件路径。支持 `--kind file|directory|symlink`、`--extension pdf`、`--under /absolute/path` 和 `--limit 20`。拼音使用通用 MIT 词组表解决常见多音字，未收录的词回退到系统单字读音；不处理声调。默认 `--mode auto` 融合名称与拼音，优先精确名称，降低仅扩展名命中的排名；`--mode pinyin` 强调中文全拼/首字母，`--mode filename` 只查字面名称。两字母缩写存在同音/同首字母歧义，建议使用更长缩写、全拼或目录筛选。未实现 AND/OR/正则查询语法。
 

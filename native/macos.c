@@ -21,7 +21,7 @@ size_t lumi_search(const uint8_t *blob, const lumi_span *names,
     static const int full_rank[5] = {0,3000,4200,5500,8000};
     static const int short_rank[5] = {0,2800,4000,5200,7500};
     size_t found = 0;
-    for (uint32_t i = start ? start : 1; i < end; i++) {
+    for (uint32_t i = start; i < end; i++) {
         if (kinds[i] & 128) continue;
         lumi_span n = names[i];
         int score = 0, tag = 0;

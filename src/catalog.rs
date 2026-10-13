@@ -325,6 +325,9 @@ impl Catalog {
             self.load()?
         };
         let pinyin = Pinyin::new()?;
+        let root_name = root.file_name().and_then(|s| s.to_str()).unwrap_or("/");
+        let root_folded = normalize(root_name);
+        let (root_full, root_initials) = pinyin.keys(&root_folded);
         let cursor = native::event_id();
         let tx = self.conn.unchecked_transaction()?;
         self.set_meta("root", root.to_str().context("root is not UTF-8")?)?;
@@ -334,10 +337,10 @@ impl Catalog {
             &Record {
                 id: 0,
                 parent: 0,
-                name: "",
-                folded: "",
-                full: "",
-                initials: "",
+                name: root_name,
+                folded: &root_folded,
+                full: &root_full,
+                initials: &root_initials,
                 kind: 1,
                 dev: metadata.dev() as i32,
                 ino: metadata.ino(),

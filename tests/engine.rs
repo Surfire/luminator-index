@@ -20,6 +20,95 @@ fn options(limit: usize) -> QueryOptions {
 }
 
 #[test]
+fn root_directory_is_searchable_after_scan_reload_and_refresh() {
+    let temp = TempDir::new().unwrap();
+    let root = temp.path().join("清泉资料库");
+    fs::create_dir(&root).unwrap();
+    let root = root.canonicalize().unwrap();
+    for n in 0..30 {
+        fs::write(root.join(format!("清泉资料库_{n}.pdf")), []).unwrap();
+    }
+    let dbpath = temp.path().join("names.sqlite");
+    let db = Catalog::open(&dbpath, true).unwrap();
+    let (scanned, _) = db.scan(&root).unwrap();
+    let check = |index: &luminator_index::Index| {
+        for q in ["清泉资料库", "qingquanziliaoku", "qqzlk"] {
+            let hits = index.query(q, &options(1));
+            assert_eq!(hits.len(), 1, "{q}");
+            assert_eq!(hits[0].path, root, "{q}");
+            assert!(hits[0].is_directory);
+            assert_eq!(hits[0].id, 0);
+            assert!(
+                index
+                    .query(
+                        q,
+                        &QueryOptions {
+                            kind: Some(0),
+                            ..options(50)
+                        }
+                    )
+                    .iter()
+                    .all(|hit| hit.path != root)
+            );
+            assert_eq!(
+                index.query(
+                    q,
+                    &QueryOptions {
+                        kind: Some(1),
+                        under: Some(root.clone()),
+                        ..options(1)
+                    }
+                )[0]
+                .path,
+                root
+            );
+            assert!(
+                index
+                    .query(
+                        q,
+                        &QueryOptions {
+                            under: Some(root.join("child")),
+                            ..options(50)
+                        }
+                    )
+                    .is_empty()
+            );
+        }
+        assert!(
+            index
+                .query(root.to_str().unwrap(), &options(50))
+                .iter()
+                .any(|hit| hit.path == root)
+        );
+        assert!(
+            index
+                .query(
+                    "清泉资料库",
+                    &QueryOptions {
+                        extension: Some("pdf".into()),
+                        ..options(50)
+                    }
+                )
+                .iter()
+                .all(|hit| hit.path != root)
+        );
+        assert_eq!(index.entries(), 30); // Descendant count retains the existing status contract.
+    };
+    check(&scanned);
+    check(&db.load().unwrap());
+    // Existing v2 databases stored the root as an unnamed structural record.
+    rusqlite::Connection::open(&dbpath)
+        .unwrap()
+        .execute(
+            "UPDATE files SET name='',folded='',full='',initials='' WHERE id=0",
+            [],
+        )
+        .unwrap();
+    check(&db.scan(&root).unwrap().0);
+    check(&db.load().unwrap());
+}
+
+#[test]
 fn contextual_pinyin_and_short_query_ranking_preserve_literal_names() {
     let temp = TempDir::new().unwrap();
     let root = temp.path().join("files");
@@ -186,7 +275,7 @@ fn chinese_pinyin_unicode_filters_and_uncapped_ranking() {
         "/",
         "files/missing",
     ] {
-        let expected = (1..loaded.slots() as u32)
+        let expected = (0..loaded.slots() as u32)
             .map(|id| loaded.path(id))
             .filter(|p| {
                 luminator_index::index::normalize(&p.to_string_lossy())
