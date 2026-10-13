@@ -53,7 +53,9 @@ target/release/luminator --db benchmarks/local-results/million.sqlite benchmark 
 uv run --no-project python3 benchmarks/live.py --db benchmarks/local-results/million.sqlite --root benchmarks/local-results/million-tree --output benchmarks/local-results/live.json
 ```
 
-后台目前顺序处理事件与请求；大型目录补扫可能暂时阻塞查询。高频长期重命名/删除会留下旧名称池和 tombstone，尚未实现在线压缩；重新启动会重建紧凑名称池。元数据修改时间以秒记录，不能识别同秒内等大小的内容修改；内容 generation 将在正文阶段实现。
+后台写入线程负责 FSEvents、扫描和 SQLite 事务，查询继续使用上一份已提交索引；提交后只传递变更记录。启动时额外复制一份内存索引，避免每次更新复制百万条目，代价是更高内存峰值。连续延长名称查询时复用完整候选集，索引更新或匹配模式变化后失效，不从 Top 20 裁剪候选。详见 [交互与批量更新优化](docs/responsive-search.md)。
+
+高频长期重命名/删除会留下旧名称池和 tombstone，尚未实现在线压缩；重新启动会重建紧凑名称池。元数据修改时间以秒记录，不能识别同秒内等大小的内容修改；内容 generation 将在正文阶段实现。
 
 ## 完整 v0.1 的后续目标
 

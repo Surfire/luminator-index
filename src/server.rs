@@ -1,5 +1,6 @@
 use crate::{
     Catalog, Index, MatchMode, QueryOptions, WriterLock, footprint, footprint_peak,
+    index::{QueryCache, Record},
     native::{Pinyin, Watcher},
 };
 use anyhow::{Context, Result, ensure};
@@ -14,7 +15,11 @@ use std::{
         net::{UnixListener, UnixStream},
     },
     path::{Path, PathBuf},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
+    thread,
     time::{Duration, Instant},
 };
 
@@ -30,9 +35,14 @@ pub struct Request {
 }
 
 pub fn answer(index: &Index, request: Request) -> Value {
+    answer_cached(index, request, &mut QueryCache::default())
+}
+
+fn answer_cached(index: &Index, request: Request, cache: &mut QueryCache) -> Value {
     if let Some(query) = request.query {
         let start = Instant::now();
-        let results = index.query(
+        let results = cache.query(
+            index,
             &query,
             &QueryOptions {
                 limit: request.limit.unwrap_or(20),
@@ -42,7 +52,7 @@ pub fn answer(index: &Index, request: Request) -> Value {
                 mode: request.mode,
             },
         );
-        json!({"results":results,"elapsed_ms":start.elapsed().as_secs_f64()*1000.})
+        json!({"results":results,"elapsed_ms":start.elapsed().as_secs_f64()*1000.,"examined_candidates":cache.examined})
     } else {
         json!({"entries":index.entries(),"slots":index.slots(),"index_allocated_bytes":index.allocated_bytes(),
             "name_pool_bytes":index.name_bytes(),"physical_footprint_bytes":footprint(),
@@ -111,7 +121,6 @@ pub fn serve(db: &Path, socket: &Path) -> Result<()> {
     if !catalog.history_valid(&index)? {
         index = catalog.scan(&index.root)?.0;
     }
-    let watcher = Watcher::start(&index.root, catalog.cursor()?)?;
     STOP.store(false, Ordering::Relaxed);
     unsafe {
         libc::signal(libc::SIGINT, stop as *const () as libc::sighandler_t);
@@ -121,16 +130,60 @@ pub fn serve(db: &Path, socket: &Path) -> Result<()> {
         "{}",
         json!({"ready":true,"entries":index.entries(),"restore_ms":restore_ms,"startup_ms":start.elapsed().as_secs_f64()*1000.})
     );
+    // Copy once at startup; subsequent publications contain only committed changed records.
+    let mut writer_index = index.clone();
+    let (send, receive) = mpsc::sync_channel(1);
+    thread::scope(|scope| {
+        let worker = scope.spawn(move || {
+            let result = (|| -> Result<()> {
+                let watcher = Watcher::start(&writer_index.root, catalog.cursor()?)?;
+                while !STOP.load(Ordering::Relaxed) {
+                    let first = match watcher.events.recv_timeout(Duration::from_millis(20)) {
+                        Ok(event) => event,
+                        Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                        Err(error) => return Err(error.into()),
+                    };
+                    let mut events = vec![first];
+                    events.extend(watcher.events.try_iter().take(19_999));
+                    let stats = catalog.apply_events(&mut writer_index, &events, &pinyin)?;
+                    let changes = catalog.take_changes(&writer_index);
+                    eprintln!("{}", json!({"update":stats}));
+                    if !changes.is_empty() && send.send(Ok(changes)).is_err() {
+                        break;
+                    }
+                }
+                Ok(())
+            })();
+            if let Err(error) = result {
+                let _ = send.send(Err(error));
+            }
+        });
+        let result = serve_queries(listener, &mut index, &receive);
+        STOP.store(true, Ordering::Relaxed);
+        drop(receive);
+        worker
+            .join()
+            .map_err(|_| anyhow::anyhow!("index writer panicked"))?;
+        result
+    })
+}
+
+fn serve_queries(
+    listener: UnixListener,
+    index: &mut Index,
+    receive: &mpsc::Receiver<Result<Vec<Record<'static>>>>,
+) -> Result<()> {
+    let mut cache = QueryCache::default();
     while !STOP.load(Ordering::Relaxed) {
-        let events: Vec<_> = watcher.events.try_iter().take(20_000).collect();
-        if !events.is_empty() {
-            match catalog.apply_events(&mut index, &events, &pinyin) {
-                Ok(stats) => eprintln!("{}", json!({"update":stats})),
-                Err(error) => {
-                    eprintln!("update failed: {error:#}");
-                    return Err(error);
+        match receive.try_recv() {
+            Ok(changes) => {
+                cache.clear();
+                for record in changes? {
+                    index.put(&record)?;
                 }
             }
+            Err(mpsc::TryRecvError::Empty) => {}
+            Err(mpsc::TryRecvError::Disconnected) => anyhow::bail!("index writer stopped"),
         }
         match listener.accept() {
             Ok((mut stream, _)) => {
@@ -145,7 +198,11 @@ pub fn serve(db: &Path, socket: &Path) -> Result<()> {
                         .take(65_537)
                         .read_line(&mut line)?;
                     ensure!(line.len() <= 65_536, "request too large");
-                    Ok(answer(&index, serde_json::from_str(&line)?))
+                    Ok(answer_cached(
+                        index,
+                        serde_json::from_str(&line)?,
+                        &mut cache,
+                    ))
                 })()
                 .unwrap_or_else(|e| json!({"error":e.to_string()}));
                 // A client closing its view/pipe must not stop the shared engine.

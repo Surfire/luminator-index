@@ -1,0 +1,16 @@
+{
+  "before": {
+    "max_ms": 29.362,
+    "p50_ms": 27.880708,
+    "p95_ms": 28.961291,
+    "samples": 60,
+    "scope": "headless Swift session + socket + real filename index; excludes SwiftUI rendering"
+  },
+  "after": {
+    "max_ms": 12.093084,
+    "p50_ms": 10.690125,
+    "p95_ms": 11.535917,
+    "samples": 60,
+    "scope": "headless Swift session + socket + real filename index; excludes SwiftUI rendering"
+  }
+}

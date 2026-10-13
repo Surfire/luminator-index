@@ -4,6 +4,7 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 use std::{
+    borrow::Cow,
     cmp::Reverse,
     collections::BinaryHeap,
     path::{Path, PathBuf},
@@ -37,10 +38,10 @@ mod tests {
                 .put(&Record {
                     id,
                     parent: 0,
-                    name: &name,
-                    folded: &name,
-                    full: "",
-                    initials: "",
+                    name: name.as_str().into(),
+                    folded: name.as_str().into(),
+                    full: "".into(),
+                    initials: "".into(),
                     kind: if id == 0 { 1 } else { 0 },
                     dev: 0,
                     ino: id as u64,
@@ -69,10 +70,59 @@ mod tests {
             first.iter().map(|h| h.id).collect::<Vec<_>>(),
             (1..=20).collect::<Vec<_>>()
         );
+        let mut cache = QueryCache::default();
+        for query in [
+            "a",
+            "ar",
+            "arch",
+            "archive_target",
+            "archive_target_69998",
+            "target",
+            "t",
+            "ta",
+            "not",
+            "nothing",
+        ] {
+            for kind in [None, Some(0), Some(1)] {
+                let options = QueryOptions {
+                    limit: 20,
+                    kind,
+                    ..Default::default()
+                };
+                let actual = cache.query(&index, query, &options);
+                let expected = index.query(query, &options);
+                assert_eq!(
+                    actual.iter().map(|h| (h.id, h.score)).collect::<Vec<_>>(),
+                    expected.iter().map(|h| (h.id, h.score)).collect::<Vec<_>>(),
+                    "{query}"
+                );
+            }
+        }
+        cache.clear();
+        cache.query(
+            &index,
+            "archive_target",
+            &QueryOptions {
+                limit: 1,
+                ..Default::default()
+            },
+        );
+        let last = cache.query(
+            &index,
+            "archive_target_69998",
+            &QueryOptions {
+                limit: 1,
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            last[0].id, 69_998,
+            "retain candidates beyond the previous Top-K"
+        );
     }
 }
 
-#[derive(Default, Clone, Copy, Deserialize, Serialize, clap::ValueEnum)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum MatchMode {
     #[default]
@@ -101,13 +151,48 @@ pub struct Hit {
     pub match_kind: &'static str,
 }
 
+#[derive(Default)]
+pub(crate) struct QueryCache {
+    query: String,
+    mode: MatchMode,
+    ids: Vec<u32>,
+    pub examined: usize,
+}
+
+impl QueryCache {
+    pub fn clear(&mut self) {
+        self.query.clear();
+        self.ids.clear();
+    }
+
+    pub fn query(&mut self, index: &Index, query: &str, options: &QueryOptions) -> Vec<Hit> {
+        let q = normalize(query.trim());
+        let reuse = !self.query.is_empty()
+            && !q.contains('/')
+            && options.mode == self.mode
+            && q.starts_with(&self.query);
+        let candidates = reuse.then_some(self.ids.as_slice());
+        self.examined = candidates.map_or(index.slots(), <[u32]>::len);
+        let mut matches = Vec::new();
+        let result = index.query_inner(&q, options, candidates, Some(&mut matches));
+        self.query = if q.contains('/') || options.limit == 0 {
+            String::new()
+        } else {
+            q
+        };
+        self.mode = options.mode;
+        self.ids = matches;
+        result
+    }
+}
+
 pub(crate) struct Record<'a> {
     pub id: u32,
     pub parent: u32,
-    pub name: &'a str,
-    pub folded: &'a str,
-    pub full: &'a str,
-    pub initials: &'a str,
+    pub name: Cow<'a, str>,
+    pub folded: Cow<'a, str>,
+    pub full: Cow<'a, str>,
+    pub initials: Cow<'a, str>,
     pub kind: u8,
     pub dev: i32,
     pub ino: u64,
@@ -115,6 +200,7 @@ pub(crate) struct Record<'a> {
     pub mtime: i64,
 }
 
+#[derive(Clone)]
 pub struct Index {
     pub root: PathBuf,
     blob: Vec<u8>,
@@ -189,14 +275,14 @@ impl Index {
                 self.initials[i],
             )
         } else {
-            let name = self.intern(r.name)?;
+            let name = self.intern(&r.name)?;
             let folded = if r.name == r.folded {
                 name
             } else {
-                self.intern(r.folded)?
+                self.intern(&r.folded)?
             };
-            let full = self.intern(r.full)?;
-            let initials = self.intern(r.initials)?;
+            let full = self.intern(&r.full)?;
+            let initials = self.intern(&r.initials)?;
             (name, folded, full, initials)
         };
         if i == self.kinds.len() {
@@ -223,6 +309,22 @@ impl Index {
             self.mtimes[i] = r.mtime;
         }
         Ok(())
+    }
+    pub(crate) fn record(&self, id: u32) -> Record<'static> {
+        let i = id as usize;
+        Record {
+            id,
+            parent: self.parents[i],
+            name: self.text(self.names[i]).to_owned().into(),
+            folded: self.text(self.folded[i]).to_owned().into(),
+            full: self.text(self.full[i]).to_owned().into(),
+            initials: self.text(self.initials[i]).to_owned().into(),
+            kind: self.kinds[i],
+            dev: self.devices[i],
+            ino: self.inodes[i],
+            size: self.sizes[i],
+            mtime: self.mtimes[i],
+        }
     }
     pub fn entries(&self) -> usize {
         self.kinds
@@ -271,13 +373,24 @@ impl Index {
         self.blob.len()
     }
     pub fn query(&self, query: &str, options: &QueryOptions) -> Vec<Hit> {
+        self.query_inner(query, options, None, None)
+    }
+
+    fn query_inner(
+        &self,
+        query: &str,
+        options: &QueryOptions,
+        candidates: Option<&[u32]>,
+        matches: Option<&mut Vec<u32>>,
+    ) -> Vec<Hit> {
         let q = normalize(query.trim());
         if q.is_empty() || options.limit == 0 {
             return Vec::new();
         }
         let path_query = q.contains('/');
-        let mut ids = vec![0u32; self.kinds.len()];
-        let mut scores = vec![0i32; self.kinds.len()];
+        let count = candidates.map_or(self.slots(), <[u32]>::len);
+        let mut ids = vec![0u32; count];
+        let mut scores = vec![0i32; count];
         let ranges = if path_query {
             // Normalize each distinct parent once, rather than allocating a path per file.
             let (prefix, final_component) = q.rsplit_once('/').unwrap();
@@ -325,6 +438,7 @@ impl Index {
                     self.full.as_ptr(),
                     self.initials.as_ptr(),
                     self.kinds.as_ptr(),
+                    candidates.map_or(std::ptr::null(), <[u32]>::as_ptr),
                     start as u32,
                     (start + out.len()) as u32,
                     q.as_ptr(),
@@ -340,11 +454,11 @@ impl Index {
                 )
             };
             static POOL: OnceLock<Option<rayon::ThreadPool>> = OnceLock::new();
-            if self.slots() >= 65_536
+            if count >= 65_536
                 && let Some(pool) =
                     POOL.get_or_init(|| rayon::ThreadPoolBuilder::new().num_threads(4).build().ok())
             {
-                let chunk = self.slots().div_ceil(4);
+                let chunk = count.div_ceil(4);
                 pool.install(|| {
                     ids.par_chunks_mut(chunk)
                         .zip(scores.par_chunks_mut(chunk))
@@ -359,6 +473,13 @@ impl Index {
                 std::iter::once(0..scan(0, &mut ids, &mut scores)).collect::<Vec<_>>()
             }
         };
+        if let Some(matches) = matches {
+            matches.extend(
+                ranges
+                    .iter()
+                    .flat_map(|range| range.clone().map(|j| ids[j])),
+            );
+        }
         let limit = options.limit.min(10_000);
         let mut best = BinaryHeap::with_capacity(limit + 1);
         let mut scope_parents = options.under.as_ref().map(|_| vec![0u8; self.slots()]);

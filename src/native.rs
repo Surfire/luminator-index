@@ -42,6 +42,7 @@ unsafe extern "C" {
         full: *const Span,
         initials: *const Span,
         kinds: *const u8,
+        candidates: *const u32,
         start: u32,
         end: u32,
         needle: *const u8,

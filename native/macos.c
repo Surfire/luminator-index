@@ -14,14 +14,15 @@ typedef struct { uint32_t start, len; } lumi_span;
    bits identify name/full-pinyin/initials independently of ranking. */
 size_t lumi_search(const uint8_t *blob, const lumi_span *names,
                    const lumi_span *full, const lumi_span *initials,
-                   const uint8_t *kinds, uint32_t start, uint32_t end,
+                   const uint8_t *kinds, const uint32_t *candidates, uint32_t start, uint32_t end,
                    const uint8_t *needle, size_t len, int ascii, int mode,
                    uint32_t *ids, int32_t *scores) {
     static const int name_rank[5] = {0,2500,4500,6000,9000};
     static const int full_rank[5] = {0,3000,4200,5500,8000};
     static const int short_rank[5] = {0,2800,4000,5200,7500};
     size_t found = 0;
-    for (uint32_t i = start; i < end; i++) {
+    for (uint32_t offset = start; offset < end; offset++) {
+        uint32_t i = candidates ? candidates[offset] : offset;
         if (kinds[i] & 128) continue;
         lumi_span n = names[i];
         int score = 0, tag = 0;
